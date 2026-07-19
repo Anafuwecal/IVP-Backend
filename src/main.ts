@@ -1,0 +1,28 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // 1. Enforce a clean architectural prefix for version routing API contracts
+  app.setGlobalPrefix('api/v1');
+
+  // 2. Register our global pipeline to drop unformatted payload objects[cite: 3, 5]
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Automatically strips properties not defined in our input DTOs
+      forbidNonWhitelisted: true, // Explicitly throws errors if unexpected payloads are sent
+      transform: true, // Automatically converts network payloads to typed execution instances
+    }),
+  );
+
+  // 3. Bind our unified custom JSON layout error interceptor
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  console.log(`IVP Africa API is operating on: http://localhost:${port}`);
+}
+bootstrap();
