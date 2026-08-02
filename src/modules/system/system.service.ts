@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../health/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SystemService {
@@ -8,13 +8,19 @@ export class SystemService {
   async seed() {
     // Development guardrail
     if (process.env.NODE_ENV === 'production') {
-      throw new InternalServerErrorException('Seeding is strictly prohibited in production environments.');
+      throw new InternalServerErrorException(
+        'Seeding is strictly prohibited in production environments.',
+      );
     }
 
     try {
       // 1. Core Platform Configurations
       const plan = await this.prisma.subscriptionPlan.create({
-        data: { name: 'Enterprise Tier', price: 199.99, features: ['Priority Support', 'Unlimited Postings'] },
+        data: {
+          name: 'Enterprise Tier',
+          price: 199.99,
+          features: ['Priority Support', 'Unlimited Postings'],
+        },
       });
 
       // 2. Identity & Profiles Generation
@@ -23,7 +29,16 @@ export class SystemService {
           email: 'admin@employer.com',
           passwordHash: 'secure_hash_placeholder',
           role: 'EMPLOYER',
-          employerProfile: { create: { companyName: 'IVP Africa ', website: 'https://ivpafrica.test' } },
+          employerProfile: {
+            create: {
+              companyName: 'IVP Africa',
+              website: 'https://ivpafrica.test',
+              contactPerson: 'System Admin',
+              industry: 'Technology',
+              companySize: '1-10',
+              rcNumber: 'RC000000',
+            },
+          },
         },
         include: { employerProfile: true },
       });
@@ -33,7 +48,14 @@ export class SystemService {
           email: 'dev@talent.com',
           passwordHash: 'secure_hash_placeholder',
           role: 'TALENT',
-          talentProfile: { create: { headline: 'Senior Backend Developer', skills: ['NestJS', 'PostgreSQL', 'TypeScript'] } },
+          talentProfile: {
+            create: {
+              firstName: 'John',
+              lastName: 'Doe',
+              headline: 'Senior Backend Developer',
+              skills: ['NestJS', 'PostgreSQL', 'TypeScript'],
+            },
+          },
         },
         include: { talentProfile: true },
       });
@@ -61,23 +83,27 @@ export class SystemService {
         data: { jobId: job.id, talentId: talent.talentProfile!.id },
       });
 
-      // 5. Database Constraint Verification 
+      // 5. Database Constraint Verification
       // Intentionally violating the @@unique([jobId, talentId]) rule to ensure Supabase rejects duplicate applications
       try {
         await this.prisma.application.create({
           data: { jobId: job.id, talentId: talent.talentProfile!.id },
         });
       } catch (err) {
-        console.log('Constraint verification passed: Database blocked duplicate record.');
+        console.log(
+          'Constraint verification passed: Database blocked duplicate record.',
+        );
       }
 
       return {
         success: true,
-        message: 'Database schema integrity verified. 12 test records seeded successfully across all entity constraints.'
+        message:
+          'Database schema integrity verified. 12 test records seeded successfully across all entity constraints.',
       };
-
-    } catch (error) {
-      throw new InternalServerErrorException(`Seed execution failed: ${error.message}`);
+    } catch (error: any) {
+      throw new InternalServerErrorException(
+        `Seed execution failed: ${error.message}`,
+      );
     }
   }
 }

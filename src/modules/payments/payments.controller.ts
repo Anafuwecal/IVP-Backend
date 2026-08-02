@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Headers, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 @Controller('payments')
@@ -21,5 +29,11 @@ export class PaymentsController {
       throw new UnauthorizedException('Missing signature header.');
     }
     return this.paymentsService.verifyWebhook(signature, body);
+  }
+
+  @Post('verify-config')
+  @HttpCode(HttpStatus.OK)
+  verifyConfig() {
+    return this.paymentsService.verifyConfig();
   }
 }

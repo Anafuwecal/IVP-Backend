@@ -7,11 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model SystemHealth {
-  id        String   @id @default(uuid())
-  checkedAt DateTime   @default(now())
-}
-
 // --- ENUMS ---
 enum Role {
   ADMIN
@@ -43,7 +38,11 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique @db.VarChar(255)
   passwordHash String
-  role         Role     @default(TALENT)
+  role         Role     
+  isVerified          Boolean        @default(false) // Inactive until verified
+  verificationToken   String?
+  resetToken          String?
+  resetTokenExpiry    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -52,12 +51,15 @@ model User {
 }
 
 model TalentProfile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  headline  String?  @db.VarChar(255)
-  skills    String[]
-  resumeUrl String?
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  headline       String?  @db.VarChar(255)
+  skills         String[]
+  resumeUrl      String?
+  profilePercent Int      @default(0)
 
   applications Application[]
 }
@@ -67,10 +69,19 @@ model EmployerProfile {
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyName String   @db.VarChar(255)
+  contactPerson     String
+  industry          String
+  companySize       String
+  rcNumber    String?  @unique  // Company Registration / RC Number
+  description       String?  // Updated later via PATCH /api/v1/employer/profile
+  logoUrl           String?  // Updated later via PATCH /api/v1/employer/profile
+  isProfileComplete Boolean  @default(false) // Mandatory check before posting jobs
   website     String?  @db.VarChar(255)
 
   jobs          Job[]
   subscriptions Subscription[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Job {

@@ -7,10 +7,20 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ApplicationsModule } from './modules/applications/applications.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { SystemModule } from './modules/system/system.module';
+import { PrismaModule } from './modules/prisma/prisma.module';
+import * as Joi from 'joi';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // Load environmental parameters engine wide
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // Implement the strict environmental validation schema here
+      validationSchema: Joi.object({
+        DATABASE_URL: Joi.string().required(),
+        PAYSTACK_SECRET_KEY: Joi.string().required(),
+        PAYSTACK_PUBLIC_KEY: Joi.string().required(),
+      }),
+    }), // Load environmental parameters engine wide
     AuthModule,
     UsersModule,
     JobsModule,
@@ -18,6 +28,9 @@ import { SystemModule } from './modules/system/system.module';
     PaymentsModule,
     HealthModule,
     SystemModule,
+    PrismaModule,
   ],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

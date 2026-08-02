@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class HealthService {
@@ -9,14 +9,16 @@ export class HealthService {
     try {
       // Execute a raw low-overhead database ping to verify our cloud connection
       await this.prisma.$queryRaw`SELECT 1`;
-      
+
       return {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         database: 'connected',
       };
     } catch (error) {
-      throw new InternalServerErrorException('Database connection failed' + error.message);
+      throw new InternalServerErrorException(
+        'Database connection failed' + error.message,
+      );
     }
   }
 }
