@@ -10,7 +10,7 @@ export class AppController {
     return {
       message: 'Welcome to the IVP Africa API',
       status: 'online',
-      version: '1.0.0'
+      version: '1.0.0',
     };
   }
 }

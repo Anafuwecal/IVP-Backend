@@ -1,98 +1,401 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# IVP Africa Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Project Overview
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This repository contains the backend API for the IVP Africa platform. It is built with NestJS, Prisma, and PostgreSQL. The backend supports talent and employer registration flows, email verification, authentication, password reset, job creation, subscription/payment initialization, and webhook validation.
 
-## Description
+## Key Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Talent and employer registration
+- Email verification for account activation
+- JWT authentication
+- Password reset workflow
+- Job creation endpoint
+- Paystack-style payment initialization and webhook verification
+- Prisma ORM with PostgreSQL
 
-## Project setup
+## Project Structure
 
-```bash
-$ npm install
+- `src/`
+  - `app.module.ts` — Root module wiring all feature modules
+  - `main.ts` — NestJS bootstrap and global pipeline setup
+  - `common/filters/http-exception.filter.ts` — Standard JSON error formatter
+  - `modules/`
+    - `auth/` — Authentication, registration, verification, login, and password reset
+      - `auth.controller.ts`
+      - `auth.service.ts`
+      - `auth.module.ts`
+      - `dto/auth.dto.ts`
+      - `jwt.strategy.ts`
+    - `payments/` — Payment initialization and webhook verification
+      - `payments.controller.ts`
+      - `payments.service.ts`
+      - `payments.module.ts`
+    - `jobs/` — Job posting API
+      - `jobs.controller.ts`
+      - `jobs.module.ts`
+    - `email/` — Email service for verification and password reset
+      - `email.service.ts`
+    - `prisma/` — Prisma database integration
+      - `prisma.module.ts`
+      - `prisma.service.ts`
+    - `health/`, `applications/`, `system/`, `users/` — additional feature modules
+- `prisma/schema.prisma` — Database schema and model definitions
+- `package.json` — Scripts and dependencies
+
+## Backend Architecture
+
+- **NestJS** for modular server architecture and decorators.
+- **Prisma** as the ORM connected to PostgreSQL via `DATABASE_URL`.
+- **JWT** for authentication tokens in `AuthModule`.
+- **Class-validator** + `ValidationPipe` for request validation.
+- **Global route prefix**: `/api/v1`
+- **EmailService** uses SMTP config and builds verification/reset links.
+- **PaymentsService** uses a Paystack-style webhook signature verification.
+
+### Global runtime behavior
+
+- `app.setGlobalPrefix('api/v1')`
+- `ValidationPipe` configured with:
+  - `whitelist: true`
+  - `forbidNonWhitelisted: true`
+  - `transform: true`
+- `HttpExceptionFilter` returns JSON error shape with `statusCode`, `timestamp`, and `error`.
+
+## Environment Variables
+
+Required environment variables:
+
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — JWT signing secret
+- `PAYSTACK_SECRET_KEY` — Paystack webhook secret
+- `PAYSTACK_PUBLIC_KEY` — Paystack public key
+- `API_URL` — Public API URL used in email links
+- `SMTP_HOST` — SMTP host
+- `SMTP_PORT` — SMTP port
+- `SMTP_SECURE` — `true` or `false`
+- `SMTP_USER` — SMTP username
+- `SMTP_PASS` — SMTP password
+
+## Database Schema
+
+The Prisma schema defines the following models:
+
+- `User`
+  - `id`, `email`, `passwordHash`, `role`, `isVerified`
+  - `verificationToken`, `resetToken`, `resetTokenExpiry`
+  - Relations: `talentProfile`, `employerProfile`
+- `TalentProfile`
+  - Personal fields like `firstName`, `lastName`, `skills`, `resumeUrl`
+  - Relation: `applications`
+- `EmployerProfile`
+  - Company fields like `companyName`, `contactPerson`, `industry`, `companySize`, `rcNumber`, `website`
+  - Relations: `jobs`, `subscriptions`
+- `Job`
+  - `title`, `description`, `isActive`
+  - Relation: `applications`
+- `Application`
+  - `jobId`, `talentId`, `status`
+  - Unique constraint: one talent may apply only once per job
+- `SubscriptionPlan`
+  - Pricing plan metadata and features
+- `Subscription`
+  - Employer subscription record with `status`, `startDate`, `endDate`
+- `Payment`
+  - Payment record with `amount`, `status`, `paidAt`
+
+### Enums
+
+- `Role`: `ADMIN`, `TALENT`, `EMPLOYER`
+- `ApplicationStatus`: `PENDING`, `REVIEWING`, `ACCEPTED`, `REJECTED`
+- `SubscriptionStatus`: `ACTIVE`, `CANCELED`, `PAST_DUE`
+- `PaymentStatus`: `PENDING`, `COMPLETED`, `FAILED`
+
+## API Documentation
+
+### Base URL
+
+`http://localhost:3000/api/v1`
+
+> All endpoints are prefixed with `/api/v1`.
+
+### Authentication Endpoints
+
+#### Register Talent
+
+`POST /api/v1/auth/register/talent`
+
+Request body:
+
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane@example.com",
+  "password": "StrongP@ssw0rd!",
+  "confirmPassword": "StrongP@ssw0rd!",
+  "acceptTerms": true
+}
 ```
 
-## Compile and run the project
+Response:
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```json
+{
+  "message": "Registration successful. Please check your email to verify your account.",
+  "userId": "<new-user-uuid>"
+}
 ```
 
-## Run tests
+#### Register Employer
 
-```bash
-# unit tests
-$ npm run test
+`POST /api/v1/auth/register/employer`
 
-# e2e tests
-$ npm run test:e2e
+Request body:
 
-# test coverage
-$ npm run test:cov
+```json
+{
+  "companyName": "IVP Solutions",
+  "contactPerson": "John Doe",
+  "email": "hr@example.com",
+  "password": "StrongP@ssw0rd!",
+  "confirmPassword": "StrongP@ssw0rd!",
+  "industry": "Technology",
+  "companySize": "50-100",
+  "rcNumber": "RC123456",
+  "acceptTerms": true
+}
 ```
 
-## Deployment
+Response:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```json
+{
+  "message": "Registration successful. Please check your email to verify your account.",
+  "userId": "<new-user-uuid>"
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+#### Login
 
-## Resources
+`POST /api/v1/auth/login`
 
-Check out a few resources that may come in handy when working with NestJS:
+Request body:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```json
+{
+  "email": "jane@example.com",
+  "password": "StrongP@ssw0rd!"
+}
+```
 
-## Support
+Response:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```json
+{
+  "access_token": "<jwt-token>",
+  "user": {
+    "id": "<user-uuid>",
+    "email": "jane@example.com",
+    "role": "TALENT"
+  }
+}
+```
 
-## Stay in touch
+> Login requires the account to be verified first.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+#### Verify Email
 
-## License
+`GET /api/v1/auth/verify-email?token=<verification-token>`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Response:
+
+```json
+{
+  "message": "Email verified successfully! Your account is now active."
+}
+```
+
+If already verified:
+
+```json
+{
+  "message": "Account is already verified. You can log in."
+}
+```
+
+#### Request Password Reset
+
+`POST /api/v1/auth/password-reset/request`
+
+Request body:
+
+```json
+{
+  "email": "jane@example.com"
+}
+```
+
+Response:
+
+```json
+{
+  "message": "A password reset link has been sent."
+}
+```
+
+#### Confirm Password Reset
+
+`POST /api/v1/auth/password-reset/confirm`
+
+Request body:
+
+```json
+{
+  "token": "<reset-token>",
+  "newPassword": "NewStr0ngP@ss!"
+}
+```
+
+Response:
+
+```json
+{
+  "message": "Password has been successfully reset. You can now log in with your new password."
+}
+```
+
+### Jobs Endpoint
+
+#### Create Job
+
+`POST /api/v1/jobs`
+
+Request body:
+
+```json
+{
+  "title": "Backend Engineer",
+  "description": "Build APIs for the IVP platform"
+}
+```
+
+Response:
+
+```json
+{
+  "message": "Job created successfully (Mocked)",
+  "jobId": "mock-uuid-9876",
+  "title": "Backend Engineer"
+}
+```
+
+> The jobs endpoint currently returns a mocked success response.
+
+### Payments and Webhooks
+
+#### Initialize Payment
+
+`POST /api/v1/payments/initialize`
+
+Request body:
+
+```json
+{
+  "email": "hr@example.com",
+  "amount": 199.99
+}
+```
+
+Response:
+
+```json
+{
+  "status": "success",
+  "checkoutUrl": "https://checkout.paystack.com/mock-session-code",
+  "reference": "IVP_REF_2026_<random>"
+}
+```
+
+#### Webhook Verification
+
+`POST /api/v1/payments/webhook`
+
+Headers:
+
+- `x-paystack-signature`: `<webhook-signature>`
+
+Request body example:
+
+```json
+{
+  "event": "charge.success",
+  "data": {
+    "reference": "IVP_REF_2026_12345",
+    "amount": 19999,
+    "status": "success"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "status": "received",
+  "message": "Webhook signature validated. Transaction reference IVP_REF_2026_12345 processed cleanly."
+}
+```
+
+#### Verify Payment Configuration
+
+`POST /api/v1/payments/verify-config`
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Paystack configurations validated and loaded into internal memory safely."
+}
+```
+
+## Auth and Email Flow
+
+- Registration creates a `User` and either a `TalentProfile` or `EmployerProfile`.
+- A verification token is emailed to the user.
+- Email verification updates `isVerified` and clears `verificationToken`.
+- Password reset generates a token and expiry, sends it by email, then confirms with `password-reset/confirm`.
+
+## Notes
+
+- `AuthService` uses `bcrypt` for password hashing.
+- The `EmailService` builds verification and reset URLs from `API_URL`.
+- `PrismaService` uses `@prisma/adapter-pg` and connects on module init.
+- The API currently has mocked job creation and payment initialization for architecture validation.
+
+## Running the Project
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Generate Prisma client (runs automatically after install):
+
+```bash
+npm run postinstall
+```
+
+Start in development mode:
+
+```bash
+npm run start:dev
+```
+
+Run tests:
+
+```bash
+npm test
+```

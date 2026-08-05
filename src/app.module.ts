@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './modules/users/users.module';
-import { JobsModule } from './modules/jobs/jobs.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ApplicationsModule } from './modules/applications/applications.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { SystemModule } from './modules/system/system.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { EmployerModule } from './modules/employer/employer.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -26,6 +27,7 @@ import * as Joi from 'joi';
     JobsModule,
     ApplicationsModule,
     PaymentsModule,
+    EmployerModule,
     HealthModule,
     SystemModule,
     PrismaModule,
