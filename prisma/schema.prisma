@@ -93,7 +93,7 @@ model EmployerProfile {
 model Job {
   id          String   @id @default(uuid())
   employerId  String
-  employer    EmployerProfile @relation(fields: [employerId], references: [userId], onDelete: Cascade)
+  employer    EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
   title       String   @db.VarChar(255)
   description String
   location        String

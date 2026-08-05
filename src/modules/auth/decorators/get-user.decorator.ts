@@ -7,7 +7,7 @@ export const GetUser = createParamDecorator(
 
     // Map 'id' request to the 'userId' returned by your JwtStrategy
     if (data === 'id') {
-      return user?.userId;
+      return user?.id || user?.userId;
     }
 
     return data ? user?.[data] : user;

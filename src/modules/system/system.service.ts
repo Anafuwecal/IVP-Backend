@@ -76,6 +76,10 @@ export class SystemService {
           employerId: employer.employerProfile!.id,
           title: 'Lead Architect',
           description: 'Looking for a highly skilled systems architect.',
+          location: 'Lagos, Nigeria',
+          employmentType: 'Full-Time',
+          qualification: 'BSc Degree',
+          deadline: new Date('2026-12-31T23:59:59Z'),
         },
       });
 

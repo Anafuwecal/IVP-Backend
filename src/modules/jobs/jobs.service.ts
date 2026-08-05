@@ -8,22 +8,28 @@ import { JobStatus } from '@prisma/client';
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createJob(employerId: string, dto: CreateJobDto) {
+  async createJob(userId: string, dto: CreateJobDto) {
     return this.prisma.job.create({
       data: {
         ...dto,
-        employerId,
-        status: dto.status || JobStatus.DRAFT, // Defaults to DRAFT if not specified
+        // We tell Prisma to connect via the unique userId
+        employer: {
+          connect: { userId: userId }, 
+        },
+        status: dto.status || JobStatus.DRAFT,
       },
     });
   }
 
   // Requirement #5: Edit unpublished and active jobs
-  async updateJob(jobId: string, employerId: string, dto: UpdateJobDto) {
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+  async updateJob(jobId: string, userId: string, dto: UpdateJobDto) {
+    const job = await this.prisma.job.findUnique({ 
+      where: { id: jobId },
+      include: { employer: true } // We must include the employer relation to check ownership
+    });
 
     if (!job) throw new NotFoundException('Job not found');
-    if (job.employerId !== employerId) throw new ForbiddenException('You can only edit your own jobs');
+    if (job.employer.userId !== userId) throw new ForbiddenException('You can only edit your own jobs');
     if (job.status === JobStatus.CLOSED) throw new BadRequestException('Cannot edit a closed job');
 
     return this.prisma.job.update({
@@ -33,11 +39,14 @@ export class JobsService {
   }
 
   // Requirement #6: Close a job so it no longer accepts applications
-  async closeJob(jobId: string, employerId: string) {
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+  async closeJob(jobId: string, userId: string) {
+    const job = await this.prisma.job.findUnique({ 
+      where: { id: jobId },
+      include: { employer: true }
+    });
 
     if (!job) throw new NotFoundException('Job not found');
-    if (job.employerId !== employerId) throw new ForbiddenException('You can only close your own jobs');
+    if (job.employer.userId !== userId) throw new ForbiddenException('You can only close your own jobs');
 
     return this.prisma.job.update({
       where: { id: jobId },
@@ -46,9 +55,11 @@ export class JobsService {
   }
 
   // Helper to list jobs for the employer dashboard
-  async getEmployerJobs(employerId: string) {
+  async getEmployerJobs(userId: string) {
     return this.prisma.job.findMany({
-      where: { employerId },
+      where: { 
+        employer: { userId: userId } // Find jobs where the employer's userId matches our token
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

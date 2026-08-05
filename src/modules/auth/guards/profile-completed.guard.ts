@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -12,10 +13,10 @@ export class ProfileCompletedGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const userId = request.user?.id;
-
+    const userId = request.user?.id || request.user?.userId;
+    
     if (!userId) {
-      return false;
+      throw new UnauthorizedException('User authentication context is missing.');
     }
 
     const profile = await this.prisma.employerProfile.findUnique({
