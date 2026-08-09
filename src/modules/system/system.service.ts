@@ -19,7 +19,8 @@ export class SystemService {
         data: {
           name: 'Enterprise Tier',
           price: 199.99,
-          features: ['Priority Support', 'Unlimited Postings'],
+          benefits: ['Priority Support', 'Unlimited Postings'],
+          durationMonths: 6,
         },
       });
 
@@ -61,12 +62,12 @@ export class SystemService {
       });
 
       // 3. Monetization Engine Processing
-      const subscription = await this.prisma.subscription.create({
+      const subscription = await this.prisma.employerSubscription.create({
         data: {
           employerId: employer.employerProfile!.id,
           planId: plan.id,
           endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)), // 1 month from now
-          payments: { create: { amount: 199.99 } },
+          //payments: { create: { amount: 199.99 } },
         },
       });
 

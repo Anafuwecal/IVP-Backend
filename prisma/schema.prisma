@@ -8,6 +8,7 @@ datasource db {
 }
 
 // --- ENUMS ---
+
 enum Role {
   ADMIN
   TALENT
@@ -17,6 +18,7 @@ enum Role {
 enum ApplicationStatus {
   PENDING
   REVIEWING
+  SHORTLISTED
   ACCEPTED
   REJECTED
 }
@@ -25,128 +27,199 @@ enum JobStatus {
   DRAFT
   PUBLISHED
   CLOSED
+  FILLED
 }
 
 enum SubscriptionStatus {
   ACTIVE
+  EXPIRED
   CANCELED
-  PAST_DUE
 }
 
 enum PaymentStatus {
   PENDING
-  COMPLETED
+  SUCCESS
   FAILED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  RESCHEDULED
+  CANCELED
+  COMPLETED
 }
 
 // --- CORE MODELS ---
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique @db.VarChar(255)
-  passwordHash String
-  role         Role     
-  isVerified          Boolean        @default(false) // Inactive until verified
-  verificationToken   String?
-  resetToken          String?
-  resetTokenExpiry    DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String    @id @default(uuid())
+  email             String    @unique @db.VarChar(255)
+  passwordHash      String
+  role              Role
+  isVerified        Boolean   @default(false) // Inactive until verified
+  verificationToken String?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   talentProfile   TalentProfile?
   employerProfile EmployerProfile?
 }
 
 model TalentProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   firstName      String
   lastName       String
-  headline       String?  @db.VarChar(255)
+  headline       String?        @db.VarChar(255)
   skills         String[]
   resumeUrl      String?
-  profilePercent Int      @default(0)
+  profilePercent Int            @default(0)
+  conversations  Conversation[]
 
   applications Application[]
 }
 
 model EmployerProfile {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName String   @db.VarChar(255)
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName       String  @db.VarChar(255)
   contactPerson     String
   industry          String
   companySize       String
-  rcNumber    String?  @unique  // Company Registration / RC Number
-  description       String?  // Updated later via PATCH /api/v1/employer/profile
-  logoUrl           String?  // Updated later via PATCH /api/v1/employer/profile
-  isProfileComplete Boolean  @default(false) // Mandatory check before posting jobs
-  website     String?  @db.VarChar(255)
+  rcNumber          String? @unique // Company Registration / RC Number
+  description       String? // Updated later via PATCH /api/v1/employer/profile
+  logoUrl           String? // Updated later via PATCH /api/v1/employer/profile
+  isProfileComplete Boolean @default(false) // Mandatory check before posting jobs
+  website           String? @db.VarChar(255)
 
   jobs          Job[]
-  subscriptions Subscription[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  subscriptions EmployerSubscription[]
+  payments      Payment[]
+  conversations Conversation[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 }
 
 model Job {
-  id          String   @id @default(uuid())
-  employerId  String
-  employer    EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
-  title       String   @db.VarChar(255)
-  description String
-  location        String
-  employmentType  String
-  qualification   String
-  deadline        DateTime
-  status          JobStatus       @default(DRAFT)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String          @id @default(uuid())
+  employerId     String
+  employer       EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  title          String          @db.VarChar(255)
+  description    String
+  location       String
+  employmentType String
+  qualification  String
+  deadline       DateTime
+  status         JobStatus       @default(DRAFT)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   applications Application[]
 }
 
 model Application {
-  id        String            @id @default(uuid())
-  jobId     String
-  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  talentId  String
-  talent    TalentProfile     @relation(fields: [talentId], references: [id], onDelete: Cascade)
-  status    ApplicationStatus @default(PENDING)
-  appliedAt DateTime          @default(now())
+  id            String            @id @default(uuid())
+  jobId         String
+  job           Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  talentId      String
+  talentProfile TalentProfile     @relation(fields: [talentId], references: [id], onDelete: Cascade)
+  status        ApplicationStatus @default(PENDING)
+  conversation  Conversation?
+  appliedAt     DateTime          @default(now())
+  interviews    Interview[]
 
   @@unique([jobId, talentId]) // Enforces database-level constraint: A talent can only apply once per job
 }
 
-// --- MONETIZATION MODELS ---
-model SubscriptionPlan {
-  id       String   @id @default(uuid())
-  name     String   @unique @db.VarChar(100)
-  price    Decimal  @db.Decimal(10, 2)
-  features String[]
-
-  subscriptions Subscription[]
+model Interview {
+  id            String          @id @default(uuid())
+  applicationId String
+  application   Application     @relation(fields: [applicationId], references: [id])
+  scheduledAt   DateTime
+  location      String // Can be a physical address or a Zoom/Meet link
+  instructions  String? // Optional instructions for the candidate
+  status        InterviewStatus @default(SCHEDULED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 }
 
-model Subscription {
+// --- MONETIZATION MODELS ---
+
+model SubscriptionPlan {
+  id             String                 @id @default(uuid())
+  name           String                 @unique @db.VarChar(100)
+  price          Decimal
+  durationMonths Int // Rules 2: Predefined durations (e.g., 3, 6, 12)
+  benefits       String[] // Rule 3: Array of strings for benefits
+  isActive       Boolean                @default(true) // Rule 11: Admin can deactivate
+  subscriptions  EmployerSubscription[]
+  payments       Payment[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+}
+
+model EmployerSubscription {
   id         String             @id @default(uuid())
   employerId String
-  employer   EmployerProfile    @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  employer   EmployerProfile    @relation(fields: [employerId], references: [id])
   planId     String
-  plan       SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict) // Cannot delete a plan if active subs exist
+  plan       SubscriptionPlan   @relation(fields: [planId], references: [id])
   status     SubscriptionStatus @default(ACTIVE)
-  startDate  DateTime           @default(now())
-  endDate    DateTime
-
-  payments Payment[]
+  startDate  DateTime           @default(now()) // Rule 6: Start date
+  endDate    DateTime // Rule 6: Expiry date
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
 }
 
 model Payment {
-  id             String        @id @default(uuid())
-  subscriptionId String
-  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  amount         Decimal       @db.Decimal(10, 2)
-  status         PaymentStatus @default(COMPLETED)
-  paidAt         DateTime      @default(now())
+  id        String        @id @default(uuid())
+  reference String        @unique
+  amount    Decimal
+  status    PaymentStatus @default(PENDING)
+  currency  String        @default("NGN")
+  channel   String? // card, bank, etc.
+
+  employerId String
+  employer   EmployerProfile @relation(fields: [employerId], references: [id])
+
+  planId String
+  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- PLATFORM MESSAGING MODELS ---
+
+model Conversation {
+  id            String          @id @default(uuid())
+  applicationId String          @unique
+  application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  employerId    String
+  employer      EmployerProfile @relation(fields: [employerId], references: [id])
+
+  talentId      String
+  talentProfile TalentProfile @relation(fields: [talentId], references: [id])
+
+  deletedByEmployer  Boolean  @default(false)
+  deletedByCandidate Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String // User ID of the sender
+  content  String
+  isRead   Boolean @default(false)
+
+  createdAt DateTime @default(now())
 }

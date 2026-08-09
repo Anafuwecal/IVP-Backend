@@ -1,53 +1,143 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+//import { EmailService } from '../email/email.service';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
-  private readonly paystackSecret =
-    process.env.PAYSTACK_SECRET_KEY || 'sk_test_ivp2026';
+  private readonly logger = new Logger(PaymentsService.name);
+  // Ensure it always falls back to an empty string so crypto doesn't crash
+  private readonly PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || '';
 
-  async initializePayment(email: string, amount: number) {
-    // In production, we execute a server-to-server HTTP POST to https://api.paystack.co/transaction/initialize here.
-    // For Pod 4 architecture validation, we return the structural contract.
-    const reference = `IVP_REF_2026_${Math.floor(Math.random() * 100000)}`;
+  constructor(
+    private prisma: PrismaService,
+    //  private emailService: EmailService
+  ) {}
 
-    return {
-      status: 'success',
-      checkoutUrl: 'https://checkout.paystack.com/mock-session-code',
-      reference: reference,
-    };
-  }
+  // 1. INITIALIZE PAYMENT (Rules 1, 3)
+  async initializeSubscriptionPayment(userId: string, planId: string) {
+    const employer = await this.prisma.employerProfile.findUnique({
+      where: { userId },
+      include: { user: true }
+    });
 
-  async verifyWebhook(signature: string, body: any) {
-    // 1. Rebuild the raw JSON string to match exactly what Paystack hashed
-    const payloadString = JSON.stringify(body);
-
-    // 2. Hash the payload using our private secret key
-    const hash = crypto
-      .createHmac('sha512', this.paystackSecret)
-      .update(payloadString)
-      .digest('hex');
-
-    // 3. Compare our generated hash against the signature Paystack sent
-    if (hash !== signature) {
-      throw new UnauthorizedException(
-        'Invalid webhook signature. Connection dropped.',
-      );
+    // Strict null check for employer
+    if (!employer || !employer.user) {
+      throw new NotFoundException('Employer profile not found');
     }
 
-    // 4. If valid, extract the reference and process the database update
-    const reference = body?.data?.reference || 'IVP_REF_2026_98234';
+    const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+
+    // Fix: Strict null check for plan
+    if (!plan) {
+      throw new NotFoundException('Subscription plan not found');
+    }
+
+    const amountInKobo = Number(plan.price) * 100; 
+    const paymentReference = `IVP_SUB_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    // Create a pending payment record
+    const payment = await this.prisma.payment.create({
+      data: {
+        employerId: employer.id,
+        planId: plan.id,
+        amount: plan.price,
+        reference: paymentReference,
+        status: 'PENDING',
+      },
+    });
+
+    // Call Paystack API using native fetch
+    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.PAYSTACK_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: employer.user.email,
+        amount: amountInKobo,
+        reference: payment.reference,
+        metadata: { employerId: employer.id, planId: plan.id } 
+      }),
+    });
+
+    const paystackData = await response.json();
+    if (!paystackData.status) {
+      throw new BadRequestException(`Payment initialization failed: ${paystackData.message}`);
+    }
 
     return {
-      status: 'received',
-      message: `Webhook signature validated. Transaction reference ${reference} processed cleanly.`,
+      message: 'Payment initialized successfully',
+      paymentUrl: paystackData.data.authorization_url,
+      summary: { 
+        planName: plan.name, 
+        amount: Number(plan.price), 
+        // Fix: Use durationMonths based on your schema
+        duration: `${plan.durationMonths} Months` 
+      }
     };
   }
-  verifyConfig() {
-    return {
-      success: true,
-      message:
-        'Paystack configurations validated and loaded into internal memory safely.',
-    };
+
+  // 2. HANDLE WEBHOOK (Rules 13, 14, 15, 16, 17)
+  async handlePaystackWebhook(signature: string, body: any) {
+    if (!this.PAYSTACK_SECRET) {
+      this.logger.error('PAYSTACK_SECRET_KEY is missing from environment variables');
+      return;
+    }
+
+    const hash = crypto.createHmac('sha512', this.PAYSTACK_SECRET).update(JSON.stringify(body)).digest('hex');
+    if (hash !== signature) {
+      this.logger.error('Invalid Paystack Signature');
+      return; 
+    }
+
+    const event = body.event;
+    const data = body.data;
+
+    if (event === 'charge.success') {
+      const { reference, channel, metadata } = data;
+      const { employerId, planId } = metadata;
+
+      await this.prisma.payment.update({
+        where: { reference },
+        // Fix: Ensure SUCCESS matches your PaymentStatus Enum
+        data: { status: 'SUCCESS', channel }
+      });
+
+      const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+      if (!plan) return;
+
+      const startDate = new Date();
+      const endDate = new Date();
+      // Fix: Use setMonth instead of setDate, using durationMonths from your schema
+      endDate.setMonth(startDate.getMonth() + plan.durationMonths);
+
+      await this.prisma.employerSubscription.create({
+        data: {
+          employerId,
+          planId,
+          status: 'ACTIVE',
+          startDate,
+          endDate,
+        }
+      });
+
+      this.logger.log(`Subscription activated for employer ${employerId}`);
+    }
+  }
+
+  async getPaymentHistory(userId: string) {
+    const employer = await this.prisma.employerProfile.findUnique({ where: { userId } });
+    
+    if (!employer) {
+      throw new NotFoundException('Employer profile not found');
+    }
+
+    return this.prisma.payment.findMany({
+      where: { employerId: employer.id },
+      orderBy: { createdAt: 'desc' },
+      include: { plan: true }
+    });
   }
 }

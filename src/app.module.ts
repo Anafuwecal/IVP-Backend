@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from './modules/users/users.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -9,10 +10,13 @@ import { SystemModule } from './modules/system/system.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { EmployerModule } from './modules/employer/employer.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 import * as Joi from 'joi';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       // Implement the strict environmental validation schema here
@@ -31,6 +35,8 @@ import * as Joi from 'joi';
     HealthModule,
     SystemModule,
     PrismaModule,
+    SubscriptionsModule,
+    MessagingModule,
   ],
   controllers: [],
   providers: [],
