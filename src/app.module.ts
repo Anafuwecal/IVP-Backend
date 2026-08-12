@@ -12,6 +12,7 @@ import { EmployerModule } from './modules/employer/employer.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { TalentProfileModule } from './modules/talent/talent-profile.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -37,6 +38,7 @@ import * as Joi from 'joi';
     PrismaModule,
     SubscriptionsModule,
     MessagingModule,
+    TalentProfileModule,
   ],
   controllers: [],
   providers: [],

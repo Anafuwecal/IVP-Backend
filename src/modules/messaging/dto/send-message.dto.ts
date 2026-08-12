@@ -1,9 +1,13 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class SendMessageDto {
   @IsUUID()
-  @IsNotEmpty()
-  applicationId: string;
+  @IsOptional()
+  applicationId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  conversationId?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Message content cannot be empty.' })

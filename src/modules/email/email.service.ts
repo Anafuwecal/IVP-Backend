@@ -152,4 +152,42 @@ export class EmailService {
     console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
     // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
   }
+
+  async sendApplicationReceivedEmail(
+    employerEmail: string,
+    jobTitle: string,
+    applicantName: string,
+  ) {
+    // Ideally, this points to the employer's dashboard on your frontend
+    const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/employer/dashboard`;
+
+    const mailOptions = {
+      from: `"IVP Africa" <${this.configService.get<string>('SMTP_USER')}>`,
+      to: employerEmail,
+      subject: `New Application Received: ${jobTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>New Job Application</h2>
+          <p>Hello,</p>
+          <p>Great news! <strong>${applicantName}</strong> has just applied for your job posting: <strong>${jobTitle}</strong>.</p>
+          <p>Log in to your employer dashboard to review their profile, resume, and move them to the next stage of your recruitment pipeline.</p>
+          <br />
+          <a href="${dashboardUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Application</a>
+          <br /><br />
+          <p><small>Best regards,<br/>IVP Africa Team</small></p>
+        </div>
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log(`[Email Sent] To: ${employerEmail} | Subject: New Application Received for ${jobTitle}`);
+      // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
+    } catch (error) {
+      // We log the error but DO NOT throw an exception here. 
+      // If the email fails to send, we still want the application to be saved successfully in the database.
+      console.error('Error sending application received email to employer:', error);
+    }
+  }
+
 }

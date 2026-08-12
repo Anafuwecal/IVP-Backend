@@ -20,27 +20,44 @@ export class MessagingService {
 
   // 1. SEND MESSAGE
   async sendMessage(senderUserId: string, userRole: string, dto: SendMessageDto) {
-    const { applicationId, content } = dto;
+    const { applicationId, conversationId, content } = dto;
 
     if (!content || content.trim().length === 0) {
       throw new BadRequestException('Cannot send an empty message.');
     }
 
+    if (!applicationId && !conversationId) {
+      throw new BadRequestException('Either applicationId or conversationId must be provided.');
+    }
+
     try {
-      const application = await this.prisma.application.findUnique({
-        where: { id: applicationId },
-        include: {
-          job: { include: { employer: true } },
-          talentProfile: true, // Includes the TalentProfile directly
-        },
-      });
+      let conversation: any = null;
+      let application: any = null;
 
-      if (!application) {
-        throw new NotFoundException('Job application relationship not found.');
+      if (conversationId) {
+        conversation = await this.prisma.conversation.findUnique({
+          where: { id: conversationId },
+          include: {
+            application: {
+              include: {
+                job: { include: { employer: true } },
+                talentProfile: true,
+              },
+            },
+          },
+        });
+        if (!conversation) throw new NotFoundException('Conversation not found.');
+        application = conversation.application;
+      } else if (applicationId) {
+        application = await this.prisma.application.findUnique({
+          where: { id: applicationId },
+          include: {
+            job: { include: { employer: true } },
+            talentProfile: true,
+          },
+        });
+        if (!application) throw new NotFoundException('Job application relationship not found.');
       }
-
-      const employerProfileId = application.job.employer.id;
-      const talentProfileId = application.talentProfile.id;
 
       const isEmployerSender = application.job.employer.userId === senderUserId;
       const isTalentSender = application.talentProfile.userId === senderUserId;
@@ -49,25 +66,28 @@ export class MessagingService {
         throw new ForbiddenException('You do not have an active application relationship to message this user.');
       }
 
-      let conversation = await this.prisma.conversation.findUnique({
-        where: { applicationId },
-      });
-
       if (!conversation) {
-        conversation = await this.prisma.conversation.create({
-          data: {
-            applicationId,
-            employerId: employerProfileId,
-            talentId: talentProfileId,
-          },
+        conversation = await this.prisma.conversation.findUnique({
+          where: { applicationId: application.id },
         });
+
+        if (!conversation) {
+          conversation = await this.prisma.conversation.create({
+            data: {
+              applicationId: application.id,
+              employerId: application.job.employer.id,
+              talentId: application.talentProfile.id,
+            },
+          });
+        }
       }
 
+      // Restore conversation visibility if previously deleted
       await this.prisma.conversation.update({
         where: { id: conversation.id },
         data: {
           deletedByEmployer: false,
-          deletedByCandidate: false, // Using the exact DB flag
+          deletedByCandidate: false,
           updatedAt: new Date(),
         },
       });
@@ -81,13 +101,12 @@ export class MessagingService {
       });
 
       // Real-time Gateway Broadcast
-      const receiverUserId = isEmployerSender 
-        ? application.talentProfile.userId 
+      const receiverUserId = isEmployerSender
+        ? application.talentProfile.userId
         : application.job.employer.userId;
 
-      // Pull names directly from the respective profiles
-      const senderProfileName = isEmployerSender 
-        ? application.job.employer.companyName 
+      const senderProfileName = isEmployerSender
+        ? application.job.employer.companyName
         : `${application.talentProfile.firstName} ${application.talentProfile.lastName}`;
 
       this.messagingGateway.emitNewMessage(receiverUserId, {
@@ -98,13 +117,13 @@ export class MessagingService {
         sender: {
           id: senderUserId,
           name: senderProfileName,
-        }
+        },
       });
 
       return message;
     } catch (error) {
       this.logger.error(`Failed to send message: ${error.message}`);
-      if (error instanceof ForbiddenException || error instanceof NotFoundException) {
+      if (error instanceof ForbiddenException || error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
       throw new BadRequestException('Unable to send message. Please try again.');
@@ -239,5 +258,37 @@ export class MessagingService {
     }
 
     return { message: 'Conversation deleted successfully from your inbox.' };
+  }
+
+  async getAllConversationsForAdmin(searchQuery?: string) {
+    let conversations = await this.prisma.conversation.findMany({
+      include: {
+        employer: true,
+        talentProfile: true,
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      conversations = conversations.filter((c) => {
+        const empName = c.employer.companyName.toLowerCase();
+        const candName = `${c.talentProfile.firstName} ${c.talentProfile.lastName}`.toLowerCase();
+        return empName.includes(q) || candName.includes(q);
+      });
+    }
+
+    return conversations.map((conv) => ({
+      id: conv.id,
+      applicationId: conv.applicationId,
+      employerName: conv.employer.companyName,
+      talentName: `${conv.talentProfile.firstName} ${conv.talentProfile.lastName}`,
+      lastMessage: conv.messages[0] || null,
+      updatedAt: conv.updatedAt,
+    }));
   }
 }

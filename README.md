@@ -1,131 +1,225 @@
 # IVP Africa Backend
 
-## Project Overview
+## Overview
 
-This repository contains the backend API for the IVP Africa platform. It is built with NestJS, Prisma, and PostgreSQL. The backend supports talent and employer registration flows, email verification, authentication, password reset, job creation, subscription/payment initialization, and webhook validation.
+This repository contains the backend API for the IVP Africa platform. It is built with NestJS, Prisma, and PostgreSQL. The application provides authentication, email verification, password recovery, employer profile management, job posting, subscription handling, payment flow, and messaging support.
 
-## Key Features
+## Tech Stack
 
-- Talent and employer registration
-- Email verification for account activation
+- NestJS
+- TypeScript
+- Prisma ORM
+- PostgreSQL
 - JWT authentication
-- Password reset workflow
-- Job creation endpoint
-- Paystack-style payment initialization and webhook verification
-- Prisma ORM with PostgreSQL
+- Nodemailer for email delivery
+- Paystack-style webhook handling
+- Class-validator / ValidationPipe
 
-## Project Structure
+## Project Layout
 
-- `src/`
-  - `app.module.ts` — Root module wiring all feature modules
-  - `main.ts` — NestJS bootstrap and global pipeline setup
-  - `common/filters/http-exception.filter.ts` — Standard JSON error formatter
-  - `modules/`
-    - `auth/` — Authentication, registration, verification, login, and password reset
-      - `auth.controller.ts`
-      - `auth.service.ts`
-      - `auth.module.ts`
-      - `dto/auth.dto.ts`
-      - `jwt.strategy.ts`
-    - `payments/` — Payment initialization and webhook verification
-      - `payments.controller.ts`
-      - `payments.service.ts`
-      - `payments.module.ts`
-    - `jobs/` — Job posting API
-      - `jobs.controller.ts`
-      - `jobs.module.ts`
-    - `email/` — Email service for verification and password reset
-      - `email.service.ts`
-    - `prisma/` — Prisma database integration
-      - `prisma.module.ts`
-      - `prisma.service.ts`
-    - `health/`, `applications/`, `system/`, `users/` — additional feature modules
-- `prisma/schema.prisma` — Database schema and model definitions
-- `package.json` — Scripts and dependencies
+- `src/main.ts` — Application bootstrap, global prefix, validation pipe, and exception filter
+- `src/app.module.ts` — Root module importing feature modules
+- `src/app.controller.ts` — Root welcome route
+- `src/common/filters/http-exception.filter.ts` — Custom API error formatter
+- `src/modules/` — Feature modules and controllers
+  - `auth/` — Authentication, registration, login, email verification, password reset
+  - `payments/` — Payment initialization and webhook handling
+  - `jobs/` — Job creation, applicant management, interview and fill actions
+  - `subscriptions/` — Subscription plan creation and purchase flows
+  - `employer/` — Employer profile management
+  - `health/` — Health check endpoint
+  - `system/` — Database seeding utilities
+  - `messaging/` — Messaging and conversations
+  - `prisma/` — Prisma database integration
+  - `applications/` — Placeholder module
+  - `users/` — Placeholder module
+  - `talent/` — Talent profile and dashboard controller (not wired into `AppModule`)
 
-## Backend Architecture
+## Getting Started
 
-- **NestJS** for modular server architecture and decorators.
-- **Prisma** as the ORM connected to PostgreSQL via `DATABASE_URL`.
-- **JWT** for authentication tokens in `AuthModule`.
-- **Class-validator** + `ValidationPipe` for request validation.
-- **Global route prefix**: `/api/v1`
-- **EmailService** uses SMTP config and builds verification/reset links.
-- **PaymentsService** uses a Paystack-style webhook signature verification.
+Install dependencies:
 
-### Global runtime behavior
+```bash
+npm install
+```
 
-- `app.setGlobalPrefix('api/v1')`
-- `ValidationPipe` configured with:
-  - `whitelist: true`
-  - `forbidNonWhitelisted: true`
-  - `transform: true`
-- `HttpExceptionFilter` returns JSON error shape with `statusCode`, `timestamp`, and `error`.
+Generate Prisma client (also runs automatically after install):
+
+```bash
+npx prisma generate
+```
+
+Run the app in development mode:
+
+```bash
+npm run start:dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Run tests:
+
+```bash
+npm test
+```
 
 ## Environment Variables
 
-Required environment variables:
+The application uses `dotenv` and requires the following variables:
 
 - `DATABASE_URL` — PostgreSQL connection string
+- `DIRECT_URL` — Direct database connection string used by Prisma migrations
 - `JWT_SECRET` — JWT signing secret
 - `PAYSTACK_SECRET_KEY` — Paystack webhook secret
 - `PAYSTACK_PUBLIC_KEY` — Paystack public key
 - `API_URL` — Public API URL used in email links
-- `SMTP_HOST` — SMTP host
-- `SMTP_PORT` — SMTP port
+- `SMTP_HOST` — SMTP server host
+- `SMTP_PORT` — SMTP server port
 - `SMTP_SECURE` — `true` or `false`
 - `SMTP_USER` — SMTP username
 - `SMTP_PASS` — SMTP password
 
-## Database Schema
+## Runtime Configuration
 
-The Prisma schema defines the following models:
+`src/main.ts` applies a global API prefix and validation pipe:
 
-- `User`
-  - `id`, `email`, `passwordHash`, `role`, `isVerified`
-  - `verificationToken`, `resetToken`, `resetTokenExpiry`
-  - Relations: `talentProfile`, `employerProfile`
-- `TalentProfile`
-  - Personal fields like `firstName`, `lastName`, `skills`, `resumeUrl`
-  - Relation: `applications`
-- `EmployerProfile`
-  - Company fields like `companyName`, `contactPerson`, `industry`, `companySize`, `rcNumber`, `website`
-  - Relations: `jobs`, `subscriptions`
-- `Job`
-  - `title`, `description`, `isActive`
-  - Relation: `applications`
-- `Application`
-  - `jobId`, `talentId`, `status`
-  - Unique constraint: one talent may apply only once per job
-- `SubscriptionPlan`
-  - Pricing plan metadata and features
-- `Subscription`
-  - Employer subscription record with `status`, `startDate`, `endDate`
-- `Payment`
-  - Payment record with `amount`, `status`, `paidAt`
+- `app.setGlobalPrefix('api/v1')`
+- `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`
+- `HttpExceptionFilter` formats exceptions as JSON
 
-### Enums
+## Active Modules
 
-- `Role`: `ADMIN`, `TALENT`, `EMPLOYER`
-- `ApplicationStatus`: `PENDING`, `REVIEWING`, `ACCEPTED`, `REJECTED`
-- `SubscriptionStatus`: `ACTIVE`, `CANCELED`, `PAST_DUE`
-- `PaymentStatus`: `PENDING`, `COMPLETED`, `FAILED`
+### Included in `AppModule`
 
-## API Documentation
+- `AuthModule`
+- `UsersModule` (empty placeholder)
+- `JobsModule`
+- `ApplicationsModule` (empty placeholder)
+- `PaymentsModule`
+- `EmployerModule`
+- `HealthModule`
+- `SystemModule`
+- `PrismaModule`
+- `SubscriptionsModule`
+- `MessagingModule`
+
+### Not wired into `AppModule`
+
+- `TalentController` exists under `src/modules/talent/`, but there is no `TalentModule` import in `AppModule`. As a result, talent routes are currently not registered.
+
+## Available Routes
 
 ### Base URL
 
 `http://localhost:3000/api/v1`
 
-> All endpoints are prefixed with `/api/v1`.
+### Root Route
 
-### Authentication Endpoints
+- `GET /api/v1` — Returns a welcome payload from `AppController`
 
-#### Register Talent
+### Authentication
+
+- `POST /api/v1/auth/register/talent`
+- `POST /api/v1/auth/register/employer`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/password-reset/request`
+- `GET /api/v1/auth/verify-email?token=<verification-token>`
+- `POST /api/v1/auth/password-reset/confirm`
+
+### Employer Profile
+
+- `GET /api/v1/employer/profile`
+- `PATCH /api/v1/employer/profile`
+
+### Jobs
+
+- `GET /api/v1/jobs/admin/filled-jobs`
+- `POST /api/v1/jobs`
+- `GET /api/v1/jobs/:id/applicants`
+- `PATCH /api/v1/jobs/:id/applicants/:applicationId/status`
+- `PATCH /api/v1/jobs/:id`
+- `PATCH /api/v1/jobs/:id/close`
+- `GET /api/v1/jobs/my-postings`
+- `PATCH /api/v1/jobs/:id/applicants/:applicationId/shortlist`
+- `PATCH /api/v1/jobs/:id/applicants/:applicationId/reject`
+- `POST /api/v1/jobs/:id/applicants/:applicationId/interview`
+- `PATCH /api/v1/jobs/:id/fill`
+- `PATCH /api/v1/jobs/interviews/:interviewId/reschedule`
+- `PATCH /api/v1/jobs/interviews/:interviewId/cancel`
+
+### Subscriptions
+
+- `POST /api/v1/subscriptions/admin/plans`
+- `PATCH /api/v1/subscriptions/admin/plans/:id`
+- `PATCH /api/v1/subscriptions/admin/plans/:id/status`
+- `GET /api/v1/subscriptions/admin/employers`
+- `GET /api/v1/subscriptions/plans`
+- `POST /api/v1/subscriptions/purchase/:planId`
+
+### Payments
+
+- `POST /api/v1/payments/initialize`
+- `POST /api/v1/payments/webhook`
+- `GET /api/v1/payments/history`
+
+### Messaging
+
+- `POST /api/v1/messaging/send`
+- `GET /api/v1/messaging/conversations`
+- `GET /api/v1/messaging/conversations/:id/messages`
+- `DELETE /api/v1/messaging/conversations/:id`
+
+### Health & System
+
+- `GET /api/v1/health`
+- `POST /api/v1/system/seed`
+
+## Important Notes
+
+- `PaymentsController` and `MessagingController` are annotated with `@Controller('api/v1/...')` in addition to the global prefix. This may cause route duplication at runtime (`/api/v1/api/v1/...`) unless the controller paths are adjusted.
+- `TalentController` declares routes under `@Controller('api/v1')` but is not registered through `AppModule`, so those routes are not currently active.
+- `UsersModule` and `ApplicationsModule` are imported by `AppModule` but currently contain no controllers or routes.
+- `SubscriptionsController` uses `JwtAuthGuard` and role guards, while `PaymentsController` uses `JwtAuthGuard` only for `initialize` and `history`.
+- `SystemController.seedDatabase()` is exposed as `POST /api/v1/system/seed`.
+
+## Database Schema Overview
+
+The Prisma schema defines core models such as:
+
+- `User`
+- `TalentProfile`
+- `EmployerProfile`
+- `Job`
+- `Application`
+- `SubscriptionPlan`
+- `Subscription`
+- `Payment`
+
+These models power user flows, job postings, subscriptions, and payment records.
+
+## Scripts
+
+- `npm run start` — Start NestJS in production mode
+- `npm run start:dev` — Start development server with watch mode
+- `npm run build` — Build the app
+- `npm run lint` — Run ESLint
+- `npm test` — Run Jest tests
+
+## Maintenance Notes
+
+- Fix duplicate `api/v1` route declarations in controllers
+- Import or remove the `talent` module to match actual route availability
+- Add controllers for `UsersModule` and `ApplicationsModule` if those features are intended to be active
+
+### Example Request Bodies
+
+#### Talent Registration
 
 `POST /api/v1/auth/register/talent`
-
-Request body:
 
 ```json
 {
@@ -138,20 +232,9 @@ Request body:
 }
 ```
 
-Response:
-
-```json
-{
-  "message": "Registration successful. Please check your email to verify your account.",
-  "userId": "<new-user-uuid>"
-}
-```
-
-#### Register Employer
+#### Employer Registration
 
 `POST /api/v1/auth/register/employer`
-
-Request body:
 
 ```json
 {
@@ -167,20 +250,9 @@ Request body:
 }
 ```
 
-Response:
-
-```json
-{
-  "message": "Registration successful. Please check your email to verify your account.",
-  "userId": "<new-user-uuid>"
-}
-```
-
 #### Login
 
 `POST /api/v1/auth/login`
-
-Request body:
 
 ```json
 {
@@ -189,46 +261,9 @@ Request body:
 }
 ```
 
-Response:
-
-```json
-{
-  "access_token": "<jwt-token>",
-  "user": {
-    "id": "<user-uuid>",
-    "email": "jane@example.com",
-    "role": "TALENT"
-  }
-}
-```
-
-> Login requires the account to be verified first.
-
-#### Verify Email
-
-`GET /api/v1/auth/verify-email?token=<verification-token>`
-
-Response:
-
-```json
-{
-  "message": "Email verified successfully! Your account is now active."
-}
-```
-
-If already verified:
-
-```json
-{
-  "message": "Account is already verified. You can log in."
-}
-```
-
-#### Request Password Reset
+#### Password Reset Request
 
 `POST /api/v1/auth/password-reset/request`
-
-Request body:
 
 ```json
 {
@@ -236,19 +271,9 @@ Request body:
 }
 ```
 
-Response:
-
-```json
-{
-  "message": "A password reset link has been sent."
-}
-```
-
 #### Confirm Password Reset
 
 `POST /api/v1/auth/password-reset/confirm`
-
-Request body:
 
 ```json
 {
@@ -257,7 +282,6 @@ Request body:
 }
 ```
 
-Response:
 
 ```json
 {

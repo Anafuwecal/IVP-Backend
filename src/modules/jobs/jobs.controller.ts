@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -14,6 +14,7 @@ import { UpdateApplicationStatusDto } from './dto/update-application-status.dto'
 import { ScheduleInterviewDto } from './dto/schedule-interview.dto';
 import { FillJobDto } from './dto/fill-job.dto';
 import { ActiveSubscriptionGuard } from '../subscriptions/guards/active-subscription.guard';
+import { SearchJobsDto } from './dto/search-jobs.dto';
 
 @Controller('jobs')
 export class JobsController {
@@ -26,9 +27,8 @@ export class JobsController {
   getFilledJobsForAdmin() {
     return this.jobsService.getAdminFilledJobs();
   }
-
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard, ProfileCompletedGuard, ActiveSubscriptionGuard) // Protects endpoint!
+  @UseGuards(JwtAuthGuard, RolesGuard, ProfileCompletedGuard, ActiveSubscriptionGuard  ) // Protects endpoint!
   @Roles(Role.EMPLOYER)
   createJob(@GetUser('id') employerId: string, @Body() dto: CreateJobDto) {
     return this.jobsService.createJob(employerId, dto);
@@ -160,6 +160,13 @@ export class JobsController {
     @GetUser('id') employerId: string,
   ) {
     return this.jobsService.updateInterview(interviewId, employerId, 'CANCEL');
+  }
+
+  @Get('search')
+  // Use transform: true so query parameters are correctly typed
+  @UsePipes(new ValidationPipe({ transform: true })) 
+  async searchJobs(@Query() query: SearchJobsDto) {
+    return this.jobsService.searchJobs(query);
   }
 
 }

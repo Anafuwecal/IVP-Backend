@@ -7,7 +7,8 @@ import {
   Param, 
   Query, 
   Req, 
-  UseGuards 
+  UseGuards,
+  ForbiddenException 
 } from '@nestjs/common';
 import { MessagingService } from './messaging.service';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -40,5 +41,14 @@ export class MessagingController {
   async deleteConversation(@Req() req, @Param('id') conversationId: string) {
     const userId = req.user?.id || req.user?.sub || req.user?.userId;
     return this.messagingService.deleteConversation(conversationId, userId);
+  }
+
+  @Get('admin/conversations')
+  async getAllConversationsForAdmin(@Req() req, @Query('search') search?: string) {
+    const userRole = req.user?.role;
+    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Only administrators can access this endpoint.');
+    }
+    return this.messagingService.getAllConversationsForAdmin(search);
   }
 }

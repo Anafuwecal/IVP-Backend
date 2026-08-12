@@ -8,6 +8,8 @@ import { ApplicationStatus } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ScheduleInterviewDto } from './dto/schedule-interview.dto';
 import { FillJobDto } from './dto/fill-job.dto';
+import { SearchJobsDto } from './dto/search-jobs.dto';
+import { Prisma } from '@prisma/client';
 
 
 @Injectable()
@@ -361,4 +363,68 @@ export class JobsService {
     });
   }
 
+  async searchJobs(query: SearchJobsDto) {
+    // Only active job postings must appear in search results.
+    // We enforce 'PUBLISHED' status and ensure the deadline hasn't passed.
+    const where: Prisma.JobWhereInput = {
+      status: 'PUBLISHED', 
+      deadline: { gt: new Date() }, 
+    };
+
+    // Keyword search (searches job title and description)
+    if (query.keyword) {
+      where.OR = [
+        { title: { contains: query.keyword, mode: 'insensitive' } },
+        { description: { contains: query.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    // Rule 1 & 2: Filters
+    if (query.jobType) {
+      where.jobType = query.jobType;
+    }
+    
+    if (query.location) {
+      where.location = { contains: query.location, mode: 'insensitive' };
+    }
+    
+    if (query.industry) {
+      where.industry = query.industry;
+    }
+    
+    if (query.experienceLevel) {
+      where.experienceLevel = query.experienceLevel;
+    }
+
+    // Rule 4: User must be able to sort search results.
+    // Default to sorting by newest ('createdAt' descending) if no sort is provided.
+    const orderBy: Prisma.JobOrderByWithRelationInput = {
+      [query.sortBy || 'createdAt']: query.sortOrder || 'desc',
+    };
+
+    // Execute the database query
+    const jobs = await this.prisma.job.findMany({
+      where,
+      orderBy,
+      include: {
+        employer: {
+          select: { companyName: true, logoUrl: true }, // Include basic company info for the UI
+        },
+      },
+    });
+
+    // Rule 5: If no matching jobs exist, return the exact requested string.
+    if (jobs.length === 0) {
+      return {
+        message: 'No jobs found matching your search criteria.',
+        data: [],
+      };
+    }
+
+    return {
+      message: 'Jobs retrieved successfully.',
+      count: jobs.length,
+      data: jobs,
+    };
+  }
 }

@@ -67,18 +67,47 @@ model User {
 }
 
 model TalentProfile {
-  id             String         @id @default(uuid())
-  userId         String         @unique
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firstName      String
-  lastName       String
-  headline       String?        @db.VarChar(255)
-  skills         String[]
-  resumeUrl      String?
-  profilePercent Int            @default(0)
-  conversations  Conversation[]
+  id                String         @id @default(uuid())
+  userId            String         @unique
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName         String
+  lastName          String
+  headline          String?        @db.VarChar(255)
+  professionalTitle String?        @db.VarChar(255) 
+  bio               String?        
+  location          String?        
+  skills            String[]
+  certifications    String[]       @default([])
+  resumeUrl         String?
+  profilePercent    Int            @default(0)
+  conversations     Conversation[]
 
-  applications Application[]
+  applications   Application[]
+  workExperience WorkExperience[]
+  education      Education[]
+  savedJobs      SavedJob[]
+}
+
+model WorkExperience {
+  id              String        @id @default(uuid())
+  talentProfileId String
+  talentProfile   TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+  company         String
+  role            String
+  startDate       DateTime
+  endDate         DateTime?
+  description     String?
+}
+
+model Education {
+  id              String        @id @default(uuid())
+  talentProfileId String
+  talentProfile   TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+  institution     String
+  degree          String
+  fieldOfStudy    String
+  startDate       DateTime
+  endDate         DateTime?
 }
 
 model EmployerProfile {
@@ -104,20 +133,37 @@ model EmployerProfile {
 }
 
 model Job {
-  id             String          @id @default(uuid())
-  employerId     String
-  employer       EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
-  title          String          @db.VarChar(255)
-  description    String
-  location       String
-  employmentType String
-  qualification  String
-  deadline       DateTime
-  status         JobStatus       @default(DRAFT)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id              String          @id @default(uuid())
+  employerId      String
+  employer        EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  title           String          @db.VarChar(255)
+  description     String
+  location        String
+  employmentType  String
+  jobType         String?         
+  industry        String?         
+  experienceLevel String?         
+  qualification   String
+  deadline        DateTime
+  status          JobStatus       @default(DRAFT)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   applications Application[]
+  savedJobs    SavedJob[]
+}
+
+model SavedJob {
+  id              String   @id @default(uuid())
+  talentProfileId String
+  jobId           String
+  savedAt         DateTime @default(now())
+
+  talentProfile TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+  job           Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // prevents duplicate saves at the DB level
+  @@unique([talentProfileId, jobId])
 }
 
 model Application {
