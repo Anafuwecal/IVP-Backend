@@ -1,4 +1,13 @@
 import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { 
+  ApiTags, 
+  ApiOperation, 
+  ApiBearerAuth, 
+  ApiOkResponse, 
+  ApiCreatedResponse, 
+  ApiParam, 
+  ApiForbiddenResponse 
+} from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -16,20 +25,27 @@ import { FillJobDto } from './dto/fill-job.dto';
 import { ActiveSubscriptionGuard } from '../subscriptions/guards/active-subscription.guard';
 import { SearchJobsDto } from './dto/search-jobs.dto';
 
+@ApiTags('Jobs')
+@ApiBearerAuth() // Indicates all endpoints require authentication
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
-  // Place this ABOVE any route with ':id' (Rule 9)
   @Get('admin/filled-jobs')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN) // Ensures only platform administrators can hit this
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all filled jobs across the platform (Admin only)' })
+  @ApiOkResponse({ description: 'List of filled jobs retrieved successfully.' })
+  @ApiForbiddenResponse({ description: 'Only platform administrators can access this endpoint.' })
   getFilledJobsForAdmin() {
     return this.jobsService.getAdminFilledJobs();
   }
+
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard, ProfileCompletedGuard, ActiveSubscriptionGuard  ) // Protects endpoint!
+  @UseGuards(JwtAuthGuard, RolesGuard, ProfileCompletedGuard, ActiveSubscriptionGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Create a new job posting (Employers only)' })
+  @ApiCreatedResponse({ description: 'Job created successfully.' })
   createJob(@GetUser('id') employerId: string, @Body() dto: CreateJobDto) {
     return this.jobsService.createJob(employerId, dto);
   }
@@ -37,6 +53,9 @@ export class JobsController {
   @Get(':id/applicants')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get applicants for a specific job posting' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job' })
+  @ApiOkResponse({ description: 'List of applicants retrieved successfully.' })
   getApplicants(
     @Param('id') jobId: string,
     @GetUser('id') employerId: string,
@@ -48,6 +67,10 @@ export class JobsController {
   @Patch(':id/applicants/:applicationId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Update the status of a specific job application' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job' })
+  @ApiParam({ name: 'applicationId', description: 'The UUID of the application' })
+  @ApiOkResponse({ description: 'Application status updated successfully.' })
   updateApplicationStatus(
     @Param('id') jobId: string,
     @Param('applicationId') applicationId: string,
@@ -60,6 +83,9 @@ export class JobsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Update an existing job posting' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job to update' })
+  @ApiOkResponse({ description: 'Job updated successfully.' })
   updateJob(
     @Param('id') jobId: string,
     @GetUser('id') employerId: string,
@@ -71,6 +97,9 @@ export class JobsController {
   @Patch(':id/close')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Close a job posting manually' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job to close' })
+  @ApiOkResponse({ description: 'Job has been closed.' })
   closeJob(@Param('id') jobId: string, @GetUser('id') employerId: string) {
     return this.jobsService.closeJob(jobId, employerId);
   }
@@ -78,14 +107,19 @@ export class JobsController {
   @Get('my-postings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get all job postings created by the authenticated employer' })
+  @ApiOkResponse({ description: 'Employer job postings retrieved successfully.' })
   getEmployerJobs(@GetUser('id') employerId: string) {
     return this.jobsService.getEmployerJobs(employerId);
   }
 
-  // Shortcut route: Shortlist Candidate
   @Patch(':id/applicants/:applicationId/shortlist')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Shortcut: Mark a candidate as SHORTLISTED' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job' })
+  @ApiParam({ name: 'applicationId', description: 'The UUID of the application' })
+  @ApiOkResponse({ description: 'Candidate has been shortlisted.' })
   shortlistCandidate(
     @Param('id') jobId: string,
     @Param('applicationId') applicationId: string,
@@ -98,12 +132,14 @@ export class JobsController {
       ApplicationStatus.SHORTLISTED, 
     );
   }
-
   
-  // Shortcut route: Reject Candidate
   @Patch(':id/applicants/:applicationId/reject')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Shortcut: Mark a candidate as REJECTED' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job' })
+  @ApiParam({ name: 'applicationId', description: 'The UUID of the application' })
+  @ApiOkResponse({ description: 'Candidate has been rejected.' })
   rejectCandidate(
     @Param('id') jobId: string,
     @Param('applicationId') applicationId: string,
@@ -120,6 +156,10 @@ export class JobsController {
   @Post(':id/applicants/:applicationId/interview')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Schedule an interview with an applicant' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job' })
+  @ApiParam({ name: 'applicationId', description: 'The UUID of the application' })
+  @ApiCreatedResponse({ description: 'Interview scheduled successfully.' })
   scheduleInterview(
     @Param('id') jobId: string,
     @Param('applicationId') applicationId: string,
@@ -129,10 +169,12 @@ export class JobsController {
     return this.jobsService.scheduleInterview(jobId, applicationId, employerId, dto);
   }
 
-  // endpoint to fill the job
   @Patch(':id/fill')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Mark a job as FILLED (Optionally link the hired candidate)' })
+  @ApiParam({ name: 'id', description: 'The UUID of the job' })
+  @ApiOkResponse({ description: 'Job marked as filled successfully.' })
   markJobAsFilled(
     @Param('id') jobId: string,
     @GetUser('id') employerId: string,
@@ -144,6 +186,9 @@ export class JobsController {
   @Patch('interviews/:interviewId/reschedule')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Reschedule an existing interview' })
+  @ApiParam({ name: 'interviewId', description: 'The UUID of the interview' })
+  @ApiOkResponse({ description: 'Interview rescheduled successfully.' })
   rescheduleInterview(
     @Param('interviewId') interviewId: string,
     @GetUser('id') employerId: string,
@@ -155,6 +200,9 @@ export class JobsController {
   @Patch('interviews/:interviewId/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Cancel an existing interview' })
+  @ApiParam({ name: 'interviewId', description: 'The UUID of the interview' })
+  @ApiOkResponse({ description: 'Interview cancelled successfully.' })
   cancelInterview(
     @Param('interviewId') interviewId: string,
     @GetUser('id') employerId: string,
@@ -163,10 +211,10 @@ export class JobsController {
   }
 
   @Get('search')
-  // Use transform: true so query parameters are correctly typed
-  @UsePipes(new ValidationPipe({ transform: true })) 
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiOperation({ summary: 'Search and filter active jobs' })
+  @ApiOkResponse({ description: 'Returns a paginated list of matching jobs.' })
   async searchJobs(@Query() query: SearchJobsDto) {
     return this.jobsService.searchJobs(query);
   }
-
 }

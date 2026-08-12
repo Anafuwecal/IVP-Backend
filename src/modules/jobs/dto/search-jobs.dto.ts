@@ -1,4 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsIn } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum JobType {
   FULL_TIME = 'FULL_TIME',
@@ -8,35 +9,37 @@ export enum JobType {
 }
 
 export class SearchJobsDto {
+  @ApiPropertyOptional({ example: 'developer', description: 'Searches within job title or description' })
   @IsOptional()
   @IsString()
-  keyword?: string; // Searches title or description
+  keyword?: string; 
 
-  //Filter by job type
+  @ApiPropertyOptional({ enum: JobType, description: 'Filter by job type' })
   @IsOptional()
   @IsEnum(JobType)
   jobType?: JobType;
 
-  //Filter by location
+  @ApiPropertyOptional({ example: 'Lagos', description: 'Filter by location' })
   @IsOptional()
   @IsString()
   location?: string;
 
-  //Filter by industry
+  @ApiPropertyOptional({ example: 'Fintech', description: 'Filter by industry' })
   @IsOptional()
   @IsString()
   industry?: string;
 
-  //Filter by experience level
+  @ApiPropertyOptional({ example: 'Senior', description: 'Filter by experience level' })
   @IsOptional()
   @IsString()
   experienceLevel?: string;
 
-  //Sorting
+  @ApiPropertyOptional({ enum: ['createdAt', 'salary', 'deadline'], description: 'Field to sort results by' })
   @IsOptional()
   @IsIn(['createdAt', 'salary', 'deadline'])
   sortBy?: 'createdAt' | 'salary' | 'deadline';
 
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], example: 'desc', description: 'Sort direction' })
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc';
