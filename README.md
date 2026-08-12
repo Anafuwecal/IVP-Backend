@@ -67,6 +67,27 @@ Run tests:
 npm test
 ```
 
+## OpenAPI / Swagger
+
+This project exposes interactive OpenAPI docs powered by `@nestjs/swagger` and served via Swagger UI.
+
+- Swagger UI: `GET /api/docs` — browse endpoints and try requests.
+- OpenAPI JSON: available from the Swagger module (the UI fetches it automatically).
+
+To use locally:
+
+```bash
+npm install
+npm run start:dev
+# then open http://localhost:3000/api/docs
+```
+
+Notes:
+
+- Protected endpoints require providing a JWT via the Swagger "Authorize" button (use `Bearer <token>`).
+- If you change controller route prefixes, restart the server so Swagger regenerates the OpenAPI spec.
+
+
 ## Environment Variables
 
 The application uses `dotenv` and requires the following variables:
@@ -383,6 +404,106 @@ Response:
   "message": "Paystack configurations validated and loaded into internal memory safely."
 }
 ```
+
+### Applications
+
+- `POST /api/v1/applications/apply/:jobId`
+  - Description: Apply to a job as an authenticated talent user.
+  - Requirements: JWT auth (role: `TALENT`).
+  - Body: none (application uses the authenticated user's talent profile and the `jobId` URL param).
+  - Response (201 Created):
+    ```json
+    { "message": "Application submitted", "applicationId": "<uuid>" }
+    ```
+
+- `GET /api/v1/applications/my-applications`
+  - Description: Retrieve the authenticated talent user's applications.
+  - Requirements: JWT auth (any authenticated user, typically `TALENT`).
+  - Query: optional pagination/search parameters (implementation-defined).
+  - Response (200):
+    ```json
+    [{ "applicationId": "<uuid>", "jobId": "<uuid>", "status": "PENDING", "appliedAt": "2026-08-12T..." }, ...]
+    ```
+
+### Talent profile endpoints
+
+- `PUT /api/v1/talent/profile/personal`
+  - Description: Update personal information for the authenticated talent user.
+  - Requirements: JWT auth.
+  - Body (example):
+    ```json
+    {
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "headline": "Backend Engineer",
+      "location": "Lagos, NG"
+    }
+    ```
+  - Response (200): updated talent profile object.
+
+- `POST /api/v1/talent/profile/experience`
+  - Description: Add a work experience entry to the authenticated talent profile.
+  - Requirements: JWT auth.
+  - Body (example):
+    ```json
+    {
+      "company": "ACME Corp",
+      "role": "Software Engineer",
+      "startDate": "2022-01-01",
+      "endDate": "2023-12-31",
+      "description": "Worked on APIs"
+    }
+    ```
+  - Response (201): created work experience object.
+
+- `POST /api/v1/talent/profile/education`
+  - Description: Add an education entry.
+  - Requirements: JWT auth.
+  - Body (example):
+    ```json
+    {
+      "institution": "University",
+      "degree": "BSc Computer Science",
+      "fieldOfStudy": "Computer Science",
+      "startDate": "2016-09-01",
+      "endDate": "2020-06-30"
+    }
+    ```
+  - Response (201): created education object.
+
+- `PUT /api/v1/talent/profile/skills`
+  - Description: Replace or update the skills array for the talent profile.
+  - Requirements: JWT auth.
+  - Body (example):
+    ```json
+    { "skills": ["Node.js", "TypeScript", "PostgreSQL"] }
+    ```
+  - Response (200): updated skills list.
+
+### Messaging (admin)
+
+- `GET /api/v1/messaging/admin/conversations`
+  - Description: Admin-only listing of all conversations with optional search.
+  - Requirements: JWT auth and admin role (`ADMIN` or `SUPER_ADMIN`).
+  - Query: `?search=<query>` (optional)
+  - Response (200): array of conversation summaries.
+
+### Payments / Webhook notes
+
+- `POST /api/v1/payments/webhook`
+  - Description: Paystack webhook receiver. The endpoint accepts webhook posts and responds immediately with HTTP 200 to acknowledge delivery, then processes the payload asynchronously.
+  - Requirements: None for the external service, but the request must include header `x-paystack-signature` for signature verification.
+  - Body: Paystack event payload (implementation forwards to `PaymentsService.handlePaystackWebhook`).
+  - Response: 200 OK (empty) — processing happens in background.
+
+For correctness: ensure your Paystack webhook settings send the `x-paystack-signature` header and that `PAYSTACK_SECRET_KEY` is set in environment variables.
+
+## Contributors & Maintenance
+
+- Keep secrets out of the repository (`.env` should never be committed).
+- If you add controllers, prefer using relative controller paths (e.g., `@Controller('messaging')`) and rely on the global prefix set in `src/main.ts` (`api/v1`) to avoid duplicated prefixes.
+- When adding new endpoints that accept uploads, use `FileInterceptor` and `ParseFilePipeBuilder` (as the employer profile update does) to centrally enforce file-type and size limits.
+
 
 ## Auth and Email Flow
 

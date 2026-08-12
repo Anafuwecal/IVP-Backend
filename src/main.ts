@@ -1,7 +1,9 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,6 +22,17 @@ async function bootstrap() {
 
   // 3. Bind our unified custom JSON layout error interceptor
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // 4. Setup OpenAPI / Swagger (disabled in production by default)
+  const config = new DocumentBuilder()
+    .setTitle('IVP Africa API')
+    .setDescription('IVP Africa backend API documentation')
+    .setVersion('1.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
