@@ -9,22 +9,26 @@ export class EmailService {
   constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
-      port: this.configService.get<number>('SMTP_PORT', 465),
-      secure: this.configService.get<string>('SMTP_SECURE') === 'true',
+      port: Number(this.configService.get('SMTP_PORT', 465)),
+      secure: this.configService.get<string>('SMTP_SECURE') === 'true' || Number(this.configService.get('SMTP_PORT', 465)) === 465,
+      family: Number(this.configService.get('SMTP_FAMILY', 4)), // Forces IPv4
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
-    });
+    } as nodemailer.TransportOptions);
+  }
+
+  private get defaultFrom(): string {
+    const user = this.configService.get<string>('SMTP_USER');
+    return `"IVP Africa" <${user}>`;
   }
 
   async sendVerificationEmail(email: string, token: string) {
-    // In production, this points to your frontend (e.g., Next.js/React) which then calls the API.
-    // For API testing, we can point it directly to the NestJS endpoint.
     const verifyUrl = `${process.env.API_URL}/api/v1/auth/verify-email?token=${token}`;
 
     const mailOptions = {
-      from: `"IVP Africa" <${process.env.SMTP_USER}>`,
+      from: this.defaultFrom,
       to: email,
       subject: 'Verify Your IVP Africa Account',
       html: `
@@ -32,7 +36,7 @@ export class EmailService {
           <h2>Welcome to IVP Africa!</h2>
           <p>You are one step away from completing your profile.</p>
           <p>Please verify your email address by clicking the button below:</p>
-          <a href="${verifyUrl}" style="background-color: #007bff; color: black; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email</a>
+          <a href="${verifyUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email</a>
           <br /><br />
           <p><small>If the button doesn't work, copy and paste this link into your browser:<br/> ${verifyUrl}</small></p>
         </div>
@@ -50,12 +54,10 @@ export class EmailService {
   }
 
   async sendPasswordResetEmail(email: string, token: string) {
-    // In production, this points to your frontend's "Create New Password" page,
-    // which then submits the token and new password back to the API.
     const resetUrl = `${process.env.API_URL}/api/v1/auth/reset-password?token=${token}`;
 
     const mailOptions = {
-      from: `"IVP Africa" <${process.env.SMTP_USER}>`,
+      from: this.defaultFrom,
       to: email,
       subject: 'Password Reset Request',
       html: `
@@ -63,7 +65,7 @@ export class EmailService {
           <h2>Password Reset Request</h2>
           <p>We received a request to reset your password for your IVP Africa account.</p>
           <p>Click the button below to create a new password. This link is valid for 1 hour.</p>
-          <a href="${resetUrl}" style="background-color: #28a745; color: black; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+          <a href="${resetUrl}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
           <br /><br />
           <p><small>If you did not request this, please ignore this email.</small></p>
         </div>
@@ -100,11 +102,17 @@ export class EmailService {
       messageBody = `Hi ${talentName},\n\nYour application status for ${jobTitle} at ${companyName} has been updated to: ${status}.\n\nBest regards,\nIVP Africa Team`;
     }
 
-    // Use your existing email delivery logic (Nodemailer, Resend, SendGrid, etc.)
-    console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
-  
-    // Example call to your underlying mail transport:
-    // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFrom,
+        to: toEmail,
+        subject,
+        text: messageBody,
+      });
+      console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
+    } catch (error) {
+      console.error('Error sending application status email:', error);
+    }
   }
 
   async sendInterviewEmail(
@@ -127,16 +135,34 @@ export class EmailService {
       messageBody = `Hi ${talentName},\n\n${companyName} has ${action.toLowerCase()} an interview with you for the ${jobTitle} position.\n\nDate & Time: ${time}\nLocation/Link: ${details!.location}\nInstructions: ${details!.instructions || 'None'}\n\nPlease ensure you are prepared.\n\nBest regards,\nIVP Africa Team`;
     }
 
-    console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
-    // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFrom,
+        to: toEmail,
+        subject,
+        text: messageBody,
+      });
+      console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
+    } catch (error) {
+      console.error('Error sending interview email:', error);
+    }
   }
   
   async sendJobClosedEmail(toEmail: string, talentName: string, companyName: string, jobTitle: string) {
     const subject = `Update on your application: ${jobTitle} at ${companyName} has been filled`;
     const messageBody = `Hi ${talentName},\n\nThank you for taking the time to apply and interview for the ${jobTitle} position at ${companyName}.\n\nThis email is to inform you that the recruitment process has concluded and the position has been officially filled. While you were not selected for this specific role, we highly encourage you to keep exploring and applying to other opportunities on IVP Africa.\n\nBest regards,\nIVP Africa Team`;
 
-    console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
-    // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFrom,
+        to: toEmail,
+        subject,
+        text: messageBody,
+      });
+      console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
+    } catch (error) {
+      console.error('Error sending job closed email:', error);
+    }
   }
 
   async sendSubscriptionExpiryEmail(
@@ -149,8 +175,17 @@ export class EmailService {
     const dateString = expiryDate.toLocaleDateString();
     const messageBody = `Hi ${companyName} team,\n\nYour ${planName} subscription is set to expire on ${dateString}.\n\nTo ensure uninterrupted access to job posting and recruitment features, please log in and renew your subscription or upgrade to a new plan before the expiry date.\n\nBest regards,\nIVP Africa Team`;
 
-    console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
-    // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
+    try {
+      await this.transporter.sendMail({
+        from: this.defaultFrom,
+        to: toEmail,
+        subject,
+        text: messageBody,
+      });
+      console.log(`[Email Sent] To: ${toEmail} | Subject: ${subject}`);
+    } catch (error) {
+      console.error('Error sending subscription expiry email:', error);
+    }
   }
 
   async sendApplicationReceivedEmail(
@@ -158,11 +193,10 @@ export class EmailService {
     jobTitle: string,
     applicantName: string,
   ) {
-    // Ideally, this points to the employer's dashboard on your frontend
     const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/employer/dashboard`;
 
     const mailOptions = {
-      from: `"IVP Africa" <${this.configService.get<string>('SMTP_USER')}>`,
+      from: this.defaultFrom,
       to: employerEmail,
       subject: `New Application Received: ${jobTitle}`,
       html: `
@@ -182,12 +216,8 @@ export class EmailService {
     try {
       await this.transporter.sendMail(mailOptions);
       console.log(`[Email Sent] To: ${employerEmail} | Subject: New Application Received for ${jobTitle}`);
-      // await this.mailer.sendMail({ to: toEmail, subject, text: messageBody });
     } catch (error) {
-      // We log the error but DO NOT throw an exception here. 
-      // If the email fails to send, we still want the application to be saved successfully in the database.
       console.error('Error sending application received email to employer:', error);
     }
   }
-
 }
