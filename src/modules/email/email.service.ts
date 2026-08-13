@@ -9,14 +9,15 @@ export class EmailService {
   constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
-      port: Number(this.configService.get('SMTP_PORT', 465)),
-      secure: this.configService.get<string>('SMTP_SECURE') === 'true' || Number(this.configService.get('SMTP_PORT', 465)) === 465,
+      port: Number(this.configService.get('SMTP_PORT', 587)),
+      secure: this.configService.get<string>('SMTP_SECURE') === 'false' || Number(this.configService.get('SMTP_PORT', 587)) === 587,
       family: Number(this.configService.get('SMTP_FAMILY', 4)), // Forces IPv4
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
     } as nodemailer.TransportOptions);
+   // console.log('SMTP USER:', this.configService.get('SMTP_USER'));
   }
 
   private get defaultFrom(): string {
