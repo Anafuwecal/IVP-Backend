@@ -8,6 +8,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable CORS
+  app.enableCors({
+    origin: ['http://localhost:3000', 'https://your-production-frontend-url.com'], // Add your deployed frontend URL later
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
+
   // 1. Enforce a clean architectural prefix for version routing API contracts
   app.setGlobalPrefix('api/v1');
 
