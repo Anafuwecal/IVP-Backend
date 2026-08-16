@@ -19,6 +19,26 @@ export class JobsService {
     private readonly emailService: EmailService,
   ) {}
 
+  async publishJob(employerId: string, jobData: CreateJobDto) {
+    const employer = await this.prisma.employerProfile.findUnique({
+      where: { id: employerId },
+    });
+
+    // Rule 4: Enforce verification before publishing
+    if (employer?.verificationStatus !== 'APPROVED') {
+      throw new ForbiddenException(
+        'Your account must be verified by an administrator before you can publish job vacancies.'
+      );
+    }
+
+    return this.prisma.job.create({
+      data: {
+        ...jobData,
+        employerId,
+      },
+    });
+  }
+
   async createJob(userId: string, dto: CreateJobDto) {
     return this.prisma.job.create({
       data: {

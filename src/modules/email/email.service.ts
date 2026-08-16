@@ -5,7 +5,6 @@ import { Resend } from 'resend';
 @Injectable()
 export class EmailService {
   private resend: Resend;
-
   constructor(private configService: ConfigService) {
     // Initialize Resend with your API key
     this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
@@ -20,6 +19,8 @@ export class EmailService {
   }
 
   async sendVerificationEmail(email: string, token: string) {
+    
+
     const verifyUrl = `${process.env.API_URL}/api/v1/auth/verify-email?token=${token}`;
 
     try {
@@ -212,6 +213,54 @@ export class EmailService {
       console.log(`[Email Sent] To: ${employerEmail} | Subject: New Application Received for ${jobTitle}`);
     } catch (error) {
       console.error('Error sending application received email to employer:', error);
+    }
+  }
+
+  async sendAdminLoginEmail(email: string, token: string) {
+    // This points to your frontend admin verification page
+    const loginUrl = `${process.env.FRONTEND_URL}/admin/verify?token=${token}`;
+
+    try {
+      await this.resend.emails.send({
+        from: this.defaultFrom,
+        to: email,
+        subject: 'Admin Access Verification - IVP Africa',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Admin Login Request</h2>
+            <p>Someone requested access to the IVP Africa Admin Dashboard using this email address.</p>
+            <p>If this was you, click the button below to log in securely. This link expires in 15 minutes.</p>
+            <a href="${loginUrl}" style="background-color: #000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify & Log In</a>
+            <br /><br />
+            <p><small>If you did not request this, you can safely ignore this email.</small></p>
+          </div>
+        `,
+      });
+      console.log(`[Admin Email Sent] To: ${email}`);
+    } catch (error) {
+      console.error('Error sending admin login email:', error);
+    }
+  }
+
+  async sendEmployerVerificationStatusEmail(email: string, companyName: string, status: string) {
+    const subject = status === 'APPROVED' 
+      ? 'Your Employer Account is Verified!' 
+      : 'Update on Your Employer Verification Request';
+      
+    const html = status === 'APPROVED'
+      ? `<p>Hi ${companyName},</p><p>Great news! Your account has been verified. You can now publish job vacancies on the platform.</p>`
+      : `<p>Hi ${companyName},</p><p>Unfortunately, we could not verify your account at this time. Please contact support to provide additional documentation.</p>`;
+
+    try {
+      await this.resend.emails.send({
+        from: this.defaultFrom,
+        to: email,
+        subject,
+        html,
+      });
+      console.log(`[Email Sent] To: ${email} | Subject: ${subject}`);
+    } catch (error) {
+      console.error('Error sending employer verification email:', error);
     }
   }
 }

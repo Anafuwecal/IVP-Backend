@@ -68,7 +68,6 @@ export class AuthService {
       return newUser;
     });
 
-    // TODO: Integrate Email Service here (e.g., SendGrid/AWS SES)
     // await this.emailService.sendVerificationEmail(user.email, verificationToken);
     await this.emailService.sendVerificationEmail(
       user.email,

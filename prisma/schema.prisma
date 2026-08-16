@@ -15,6 +15,18 @@ enum Role {
   EMPLOYER
 }
 
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
 enum ApplicationStatus {
   PENDING
   REVIEWING
@@ -54,16 +66,25 @@ model User {
   id                String    @id @default(uuid())
   email             String    @unique @db.VarChar(255)
   passwordHash      String
-  role              Role
+  role              Role      @default(TALENT)
   isVerified        Boolean   @default(false) // Inactive until verified
   verificationToken String?
   resetToken        String?
   resetTokenExpiry  DateTime?
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  status AccountStatus @default(ACTIVE)
+
+  // Admin Auth fields
+  adminLoginToken       String?
+  adminLoginTokenExpiry DateTime?
+
   talentProfile   TalentProfile?
   employerProfile EmployerProfile?
+  auditLogs            AuditLog[]
 }
 
 model TalentProfile {
@@ -72,13 +93,26 @@ model TalentProfile {
   user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   firstName         String
   lastName          String
+  phoneNumber String?
   headline          String?        @db.VarChar(255)
-  professionalTitle String?        @db.VarChar(255) 
-  bio               String?        
-  location          String?        
+  professionalTitle String?        @db.VarChar(255)
+  bio               String?
+  location          String?
+  jobType          String? 
+  salary           String? 
   skills            String[]
   certifications    String[]       @default([])
   resumeUrl         String?
+
+  portfolioUrl     String?
+
+  preferredJobType String? // e.g., "Full-time", "Contract"
+  preferredLocation String? // e.g., "Remote", "On-site"
+  expectedSalary    String?
+  availability      String? // e.g., "Immediate", "2 Weeks"
+  profileImageUrl  String?
+
+
   profilePercent    Int            @default(0)
   conversations     Conversation[]
 
@@ -116,6 +150,7 @@ model EmployerProfile {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyName       String  @db.VarChar(255)
   contactPerson     String
+  phoneNumber String?
   industry          String
   companySize       String
   rcNumber          String? @unique // Company Registration / RC Number
@@ -124,12 +159,13 @@ model EmployerProfile {
   isProfileComplete Boolean @default(false) // Mandatory check before posting jobs
   website           String? @db.VarChar(255)
 
-  jobs          Job[]
-  subscriptions EmployerSubscription[]
-  payments      Payment[]
-  conversations Conversation[]
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  jobs               Job[]
+  subscriptions      EmployerSubscription[]
+  verificationStatus VerificationStatus     @default(PENDING)
+  payments           Payment[]
+  conversations      Conversation[]
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 }
 
 model Job {
@@ -140,9 +176,9 @@ model Job {
   description     String
   location        String
   employmentType  String
-  jobType         String?         
-  industry        String?         
-  experienceLevel String?         
+  jobType         String?
+  industry        String?
+  experienceLevel String?
   qualification   String
   deadline        DateTime
   status          JobStatus       @default(DRAFT)
@@ -268,4 +304,15 @@ model Message {
   isRead   Boolean @default(false)
 
   createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  adminId      String 
+  action       String 
+  targetUserId String? 
+  details      String? 
+  createdAt    DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
 }

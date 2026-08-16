@@ -7,7 +7,7 @@ export class UpdatePersonalInfoDto {
   @IsString()
   professionalTitle?: string;
 
-  @ApiPropertyOptional({ example: 'Experienced software developer specializing in TypeScript and Node.js...', description: 'Short biography' })
+  @ApiPropertyOptional({ example: 'Experienced software developer specializing in TypeScript...', description: 'Short biography' })
   @IsOptional()
   @IsString()
   bio?: string;
@@ -17,10 +17,11 @@ export class UpdatePersonalInfoDto {
   @IsString()
   location?: string;
 
-  @ApiPropertyOptional({ example: 'https://example.com/resume.pdf', description: 'Link to a hosted resume PDF' })
+  // Added profileImageUrl, removed resumeUrl
+  @ApiPropertyOptional({ example: 'https://example.com/profile.jpg', description: 'Link to a hosted profile image' })
   @IsOptional()
-  @IsUrl({}, { message: 'Resume must be a valid URL' })
-  resumeUrl?: string;
+  @IsUrl({}, { message: 'Profile image must be a valid URL' })
+  profileImageUrl?: string;
 }
 
 export class AddExperienceDto {
@@ -41,7 +42,7 @@ export class AddExperienceDto {
   @IsDateString()
   endDate?: string;
 
-  @ApiPropertyOptional({ example: 'Developed scalable web applications using React and Vue.', description: 'Description of responsibilities and achievements' })
+  @ApiPropertyOptional({ example: 'Developed scalable web applications...', description: 'Description of responsibilities and achievements' })
   @IsOptional()
   @IsString()
   description?: string;
@@ -89,4 +90,36 @@ export class UpdateSkillsDto {
   @IsArray()
   @IsString({ each: true })
   certifications?: string[];
+
+  @ApiPropertyOptional({ example: 'https://github.com/yourusername', description: 'Link to portfolio or GitHub' })
+  @IsOptional()
+  @IsUrl({}, { message: 'Portfolio must be a valid URL' })
+  portfolioUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/resume.pdf', description: 'Link to a hosted resume PDF' })
+  @IsOptional()
+  @IsUrl({}, { message: 'Resume must be a valid URL' })
+  resumeUrl?: string;
+}
+
+export class UpdateEmploymentPreferenceDto {
+  @ApiPropertyOptional({ example: 'Full-time', description: 'Preferred job type' })
+  @IsOptional()
+  @IsString()
+  preferredJobType?: string;
+
+  @ApiPropertyOptional({ example: 'Remote', description: 'Preferred work location' })
+  @IsOptional()
+  @IsString()
+  preferredLocation?: string;
+
+  @ApiPropertyOptional({ example: 'NGN 500,000 / month', description: 'Expected salary' })
+  @IsOptional()
+  @IsString()
+  expectedSalary?: string;
+
+  @ApiPropertyOptional({ example: 'Immediate', description: 'Availability to start' })
+  @IsOptional()
+  @IsString()
+  availability?: string;
 }

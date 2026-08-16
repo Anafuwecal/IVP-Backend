@@ -13,6 +13,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { TalentProfileModule } from './modules/talent/talent-profile.module';
+import { AdminModule } from './modules/Admin/admin.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -33,6 +34,7 @@ import * as Joi from 'joi';
     ApplicationsModule,
     PaymentsModule,
     EmployerModule,
+    AdminModule,
     HealthModule,
     SystemModule,
     PrismaModule,
