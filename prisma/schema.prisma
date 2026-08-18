@@ -181,6 +181,7 @@ model Job {
   jobType         String?
   industry        String?
   experienceLevel String?
+  salary          Decimal?        // (or Int?)
   qualification   String
   deadline        DateTime
   status          JobStatus       @default(DRAFT)

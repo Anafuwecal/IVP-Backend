@@ -384,67 +384,67 @@ export class JobsService {
   }
 
   async searchJobs(query: SearchJobsDto) {
-    // Only active job postings must appear in search results.
-    // We enforce 'PUBLISHED' status and ensure the deadline hasn't passed.
-    const where: Prisma.JobWhereInput = {
-      status: 'PUBLISHED', 
-      deadline: { gt: new Date() }, 
-    };
+  const where: Prisma.JobWhereInput = {
+    status: 'PUBLISHED',
+    deadline: { gt: new Date() },
+  };
 
-    // Keyword search (searches job title and description)
-    if (query.keyword) {
-      where.OR = [
-        { title: { contains: query.keyword, mode: 'insensitive' } },
-        { description: { contains: query.keyword, mode: 'insensitive' } },
-      ];
-    }
+  // Keyword search (searches job title and description)
+  if (query.keyword) {
+    where.OR = [
+      { title: { contains: query.keyword, mode: 'insensitive' } },
+      { description: { contains: query.keyword, mode: 'insensitive' } },
+    ];
+  }
 
-    // Rule 1 & 2: Filters
-    if (query.jobType) {
-      where.jobType = query.jobType;
-    }
-    
-    if (query.location) {
-      where.location = { contains: query.location, mode: 'insensitive' };
-    }
-    
-    if (query.industry) {
-      where.industry = query.industry;
-    }
-    
-    if (query.experienceLevel) {
-      where.experienceLevel = query.experienceLevel;
-    }
+  // Filters
+  if (query.jobType) where.jobType = query.jobType;
+  if (query.location) where.location = { contains: query.location, mode: 'insensitive' };
+  if (query.industry) where.industry = query.industry;
+  if (query.experienceLevel) where.experienceLevel = query.experienceLevel;
 
-    // Rule 4: User must be able to sort search results.
-    // Default to sorting by newest ('createdAt' descending) if no sort is provided.
-    const orderBy: Prisma.JobOrderByWithRelationInput = {
-      [query.sortBy || 'createdAt']: query.sortOrder || 'desc',
-    };
+  // Map incoming sortBy parameter safely to actual fields on the Job model
+  const getSortField = (sortBy?: string): keyof Prisma.JobOrderByWithRelationInput => {
+    switch (sortBy) {
+      case 'deadline':
+        return 'deadline';
+      case 'createdAt':
+        return 'createdAt';
+      case 'salary':
+        // 'Job' model currently lacks a salary field; safely fallback to 'createdAt'
+        return 'createdAt';
+      default:
+        return 'createdAt';
+    }
+  };
 
-    // Execute the database query
-    const jobs = await this.prisma.job.findMany({
-      where,
-      orderBy,
-      include: {
-        employer: {
-          select: { companyName: true, logoUrl: true }, // Include basic company info for the UI
-        },
+  const sortOrder = query.sortOrder || 'desc';
+  const sortField = getSortField(query.sortBy);
+
+  const orderBy: Prisma.JobOrderByWithRelationInput = {
+    [sortField]: sortOrder,
+  };
+
+  const jobs = await this.prisma.job.findMany({
+    where,
+    orderBy,
+    include: {
+      employer: {
+        select: { companyName: true, logoUrl: true },
       },
-    });
+    },
+  });
 
-    // Rule 5: If no matching jobs exist, return the exact requested string.
-    if (jobs.length === 0) {
-      return {
-        message: 'No jobs found matching your search criteria.',
-        data: [],
-      };
-    }
-
+  if (jobs.length === 0) {
     return {
-      message: 'Jobs retrieved successfully.',
-      count: jobs.length,
-      data: jobs,
+      message: 'No jobs found matching your search criteria.',
+      data: [],
     };
   }
+
+  return {
+    message: 'Jobs retrieved successfully.',
+    count: jobs.length,
+    data: jobs,
+  };
 }
