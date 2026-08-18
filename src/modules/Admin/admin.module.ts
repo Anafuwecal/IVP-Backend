@@ -1,8 +1,26 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { AdminController } from './admins.controller';
+import { 
+  AdminController, 
+  AdminEmployerController, 
+  AdminReportsController,
+  AdminNotificationController,
+  AdminContentController,
+  AdminAuditController
+} from './admins.controller';
+import { AdminJobController } from './admins.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AdminAuthService, AdminDashboardService, DashboardService } from './admin.service';
+import { 
+  AdminAuthService, 
+  AdminDashboardService, 
+  DashboardService,
+  AdminEmployerService,
+  AdminJobService,
+  AdminReportsService,
+  AdminContentService,
+  AdminNotificationService,
+  AdminAuditService
+  } from './admin.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailService } from '../email/email.service';
 
@@ -18,7 +36,27 @@ import { EmailService } from '../email/email.service';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AdminController],
-  providers: [AdminAuthService, AdminDashboardService, DashboardService, EmailService],
+  controllers: [
+    AdminController, 
+    AdminEmployerController, 
+    AdminJobController,
+    AdminReportsController,
+    AdminNotificationController,
+    AdminContentController,
+    AdminAuditController
+  ],
+  providers: [
+    AdminAuthService, 
+    AdminDashboardService, 
+    DashboardService,
+    AdminEmployerService,
+    AdminNotificationService,
+    AdminJobService,
+    EmailService,
+    AdminReportsService,
+    AdminContentService,
+    AdminAuditService
+  ],
+  exports: [AdminAuditService]
 })
 export class AdminModule {}

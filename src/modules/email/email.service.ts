@@ -242,25 +242,71 @@ export class EmailService {
     }
   }
 
-  async sendEmployerVerificationStatusEmail(email: string, companyName: string, status: string) {
+  async sendEmployerVerificationStatusEmail(email: string, companyName: string, status: string, rejectionReason?: string) {
     const subject = status === 'APPROVED' 
-      ? 'Your Employer Account is Verified!' 
-      : 'Update on Your Employer Verification Request';
+    ? 'Your Employer Account is Verified!' 
+    : 'Update on Your Employer Verification Request';
       
     const html = status === 'APPROVED'
-      ? `<p>Hi ${companyName},</p><p>Great news! Your account has been verified. You can now publish job vacancies on the platform.</p>`
-      : `<p>Hi ${companyName},</p><p>Unfortunately, we could not verify your account at this time. Please contact support to provide additional documentation.</p>`;
+    ? `
+Hi ${companyName},
 
-    try {
-      await this.resend.emails.send({
-        from: this.defaultFrom,
-        to: email,
-        subject,
-        html,
-      });
-      console.log(`[Email Sent] To: ${email} | Subject: ${subject}`);
-    } catch (error) {
-      console.error('Error sending employer verification email:', error);
-    }
+
+       
+Great news! Your account has been verified. You can now publish job vacancies on the platform.
+
+`
+    : `
+Hi ${companyName},
+
+
+       
+Unfortunately, we could not verify your account at this time.
+
+
+       
+Reason: ${rejectionReason}
+
+
+       
+Please log in to your dashboard to provide the correct documentation or contact support for help.
+
+`;
+
+  try {
+    await this.resend.emails.send({
+      from: this.defaultFrom,
+      to: email,
+      subject,
+      html,
+    });
+    console.log(`[Email Sent] To: ${email} | Subject: ${subject}`);
+  } catch (error) {
+    console.error('Error sending employer verification email:', error);
   }
+ }
+
+ async sendEmail(options: { to: string; subject: string; text: string; html?: string }) {
+  try {
+    await this.resend.emails.send({
+      from: this.defaultFrom,
+      to: options.to,
+      subject: options.subject,
+      // If HTML isn't provided, wrap the plain text in a basic div for better readability
+      html: options.html || `
+        
+          ${options.subject}
+          ${options.text}
+        
+      `,
+    });
+    console.log(`[Broadcast Email Sent] To: ${options.to} | Subject: ${options.subject}`);
+  } catch (error) {
+    console.error(`Error sending broadcast email to ${options.to}:`, error);
+    // We throw the error so the notification service can increment the 'failureCount'
+    throw error; 
+  }
+
+ }
+
 }

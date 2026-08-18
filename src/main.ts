@@ -10,9 +10,15 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://your-production-frontend-url.com'], // Add your deployed frontend URL later
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
+    origin: [
+    'http://localhost:3000',
+    'http://localhost:3001', // The port your frontend is currently using
+    'http://localhost:7000',
+    'https://ivp-africa.vercel.app', // Removed the trailing slash (crucial for CORS)
+    process.env.FRONTEND_URL, // Good practice to pull from environment variables
+   ].filter(Boolean), 
+   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+   credentials: true,
   });
 
   // 1. Enforce a clean architectural prefix for version routing API contracts

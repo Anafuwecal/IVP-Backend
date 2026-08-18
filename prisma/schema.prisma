@@ -81,6 +81,7 @@ model User {
   // Admin Auth fields
   adminLoginToken       String?
   adminLoginTokenExpiry DateTime?
+  broadcastsSent BroadcastNotification[]
 
   talentProfile   TalentProfile?
   employerProfile EmployerProfile?
@@ -162,6 +163,7 @@ model EmployerProfile {
   jobs               Job[]
   subscriptions      EmployerSubscription[]
   verificationStatus VerificationStatus     @default(PENDING)
+  rejectionReason    String?
   payments           Payment[]
   conversations      Conversation[]
   createdAt          DateTime               @default(now())
@@ -308,11 +310,56 @@ model Message {
 
 model AuditLog {
   id           String   @id @default(uuid())
-  adminId      String 
-  action       String 
-  targetUserId String? 
-  details      String? 
+  adminId      String
+  admin        User     @relation(fields: [adminId], references: [id])
+  
+  action       String   
+  entity       String   // e.g., "FAQ", "ANNOUNCEMENT", "USER"
+  entityId     String?  // Optional ID of the affected record
+  targetUserId String?  // Kept from your original schema 
+  details      Json?    // Using Json for flexible data storage
+  
   createdAt    DateTime @default(now())
+}
 
-  admin User @relation(fields: [adminId], references: [id])
+model Faq {
+  id          String   @id @default(uuid())
+  question    String
+  answer      String
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  message     String
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteContent {
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g. "ABOUT_US", "CONTACT_INFO"
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model BroadcastNotification {
+  id             String   @id @default(uuid())
+  title          String
+  message        String
+  
+  targetAudience String   
+  
+  status         String   @default("PENDING") // 'PENDING', 'COMPLETED', 'FAILED'
+  successCount   Int      @default(0)
+  failureCount   Int      @default(0)
+  
+  adminId        String
+  admin          User     @relation(fields: [adminId], references: [id])
+  
+  createdAt      DateTime @default(now())
 }

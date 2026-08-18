@@ -1,13 +1,31 @@
-import { Controller, Post, Body, Get, Query, Patch, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Put, Body, Get, Query, Patch, Param, UseGuards, Req, Delete, Res } from '@nestjs/common';
 import { AdminAuthService } from './admin.service';
 import { AdminDashboardService } from './admin.service';
 import { DashboardService } from './admin.service';
+import { AdminContentService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role, AccountStatus } from '@prisma/client';
+import type { Response } from 'express';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { AdminEmployerService } from './admin.service';
+import { VerifyEmployerDto } from './dto/verify-employer.dto';
+import { AdminJobService } from './admin.service';
+import { GetJobsFilterDto, UpdateJobStatusDto } from './dto/admin-job.dto';
+import { AdminReportsService, AdminAuditService } from './admin.service';
+import { GetAuditLogsDto } from './dto/admin-audit.dto';
+import { GetReportFilterDto, ExportReportDto } from './dto/admin-report.dto';
+import { AdminNotificationService } from './admin.service';
+import { CreateBroadcastDto } from './dto/admin-notification.dto';
+import {
+  CreateFaqDto,
+  UpdateFaqDto,
+  UpdateAboutUsDto,
+  UpdateContactInfoDto,
+  CreateAnnouncementDto,
+  UpdateAnnouncementStatusDto,
+} from './dto/admin-content.dto';
 
 @Controller('admin')
 export class AdminController {
@@ -102,7 +120,7 @@ export class AdminController {
 // --- EMPLOYER VERIFICATION ---
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN') 
+@Roles(Role.ADMIN)  // Changed 'ADMIN' to Role.ADMIN for consistency
 @Controller('admin/employers')
 export class AdminEmployerController {
   constructor(private readonly adminEmployerService: AdminEmployerService) {}
@@ -113,12 +131,183 @@ export class AdminEmployerController {
     return this.adminEmployerService.getPendingRequests();
   }
 
-  // Rule 2: Approve or reject requests
+  // Rules 2, 3, 4, 5: Approve or reject requests with optional reason
   @Patch(':id/verify')
   async verifyEmployer(
     @Param('id') id: string, 
-    @Body('status') status: 'APPROVED' | 'REJECTED'
+    @Body() verifyDto: VerifyEmployerDto 
   ) {
-    return this.adminEmployerService.updateVerificationStatus(id, status);
+    return this.adminEmployerService.updateVerificationStatus(
+      id, 
+      verifyDto.status, 
+      verifyDto.rejectionReason
+    );
+  }
+}
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@Controller('admin/jobs')
+export class AdminJobController {
+  constructor(private readonly adminJobService: AdminJobService) {}
+
+  // Rule 1, 2, 3, 7: Get all jobs with search, status filter & application count
+  @Get()
+  async getAllJobs(@Query() filters: GetJobsFilterDto) {
+    return this.adminJobService.getAllJobs(filters);
+  }
+
+  @Get(':id')
+  async getJobDetails(@Param('id') id: string) {
+    return this.adminJobService.getJobDetails(id);
+  }
+
+  // Rule 4, 5, 6: Update status (PUBLISHED, HIDDEN, CLOSED, etc.)
+  @Patch(':id/status')
+  async updateJobStatus(
+    @Param('id') id: string,
+    @Body() updateJobStatusDto: UpdateJobStatusDto,
+  ) {
+    return this.adminJobService.updateJobStatus(id, updateJobStatusDto);
+  }
+
+  // Rule 5: Delete inappropriate job posting
+  @Delete(':id')
+  async deleteJob(@Param('id') id: string) {
+    return this.adminJobService.deleteJob(id);
+  }
+}
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@Controller('admin/reports')
+export class AdminReportsController {
+  constructor(private readonly reportsService: AdminReportsService) {}
+
+  @Get('summary')
+  async getSummary(@Query() filters: GetReportFilterDto) {
+    return this.reportsService.getAnalyticsSummary(filters);
+  }
+
+  @Get('export')
+  async exportReport(
+    @Query() filters: ExportReportDto,
+    @Res() res: Response
+  ) {
+    const csvData = await this.reportsService.generateCsvReport(filters.type, filters);
+    
+    // Generate a filename with today's date
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `${filters.type.toLowerCase()}-report-${timestamp}.csv`;
+
+    // Set headers so the client downloads it as a CSV file
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    
+    return res.send(csvData);
+  }
+}
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@Controller('admin/content')
+export class AdminContentController {
+  constructor(private readonly contentService: AdminContentService) {}
+
+  // --- RULE 1: FAQ ENDPOINTS ---
+  @Get('faqs')
+  async getFaqs() {
+    return this.contentService.getAllFaqs();
+  }
+
+  @Post('faqs')
+  async createFaq(@Body() dto: CreateFaqDto) {
+    return this.contentService.createFaq(dto);
+  }
+
+  @Put('faqs/:id')
+  async updateFaq(@Param('id') id: string, @Body() dto: UpdateFaqDto) {
+    return this.contentService.updateFaq(id, dto);
+  }
+
+  @Delete('faqs/:id')
+  async deleteFaq(@Param('id') id: string) {
+    return this.contentService.deleteFaq(id);
+  }
+
+  // --- RULE 2: ABOUT US ENDPOINTS ---
+  @Get('about-us')
+  async getAboutUs() {
+    return this.contentService.getAboutUs();
+  }
+
+  @Put('about-us')
+  async updateAboutUs(@Body() dto: UpdateAboutUsDto) {
+    return this.contentService.updateAboutUs(dto);
+  }
+
+  // --- RULE 3: CONTACT US ENDPOINTS ---
+  @Get('contact-info')
+  async getContactInfo() {
+    return this.contentService.getContactInfo();
+  }
+
+  @Put('contact-info')
+  async updateContactInfo(@Body() dto: UpdateContactInfoDto) {
+    return this.contentService.updateContactInfo(dto);
+  }
+
+  // --- RULE 4: ANNOUNCEMENTS ENDPOINTS ---
+  @Get('announcements')
+  async getAnnouncements() {
+    return this.contentService.getAllAnnouncements();
+  }
+
+  @Post('announcements')
+  async createAnnouncement(@Body() dto: CreateAnnouncementDto) {
+    return this.contentService.createAnnouncement(dto);
+  }
+
+  @Patch('announcements/:id/status')
+  async updateAnnouncementStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateAnnouncementStatusDto,
+  ) {
+    return this.contentService.updateAnnouncementStatus(id, dto);
+  }
+
+  @Delete('announcements/:id')
+  async deleteAnnouncement(@Param('id') id: string) {
+    return this.contentService.deleteAnnouncement(id);
+  }
+}
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@Controller('admin/audit-logs')
+export class AdminAuditController {
+  constructor(private readonly auditService: AdminAuditService) {}
+
+  @Get()
+  async getAuditLogs(@Query() filters: GetAuditLogsDto) {
+    return this.auditService.getLogs(filters);
+  }
+}
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@Controller('admin/notifications')
+export class AdminNotificationController {
+  constructor(private readonly notificationService: AdminNotificationService) {}
+
+  @Post('broadcast')
+  async sendBroadcast(@Req() req: any, @Body() dto: CreateBroadcastDto) {
+    // req.user comes from your JwtAuthGuard
+    return this.notificationService.sendBroadcast(req.user.id, dto);
+  }
+
+  @Get('history')
+  async getBroadcastHistory() {
+    return this.notificationService.getBroadcastHistory();
   }
 }
