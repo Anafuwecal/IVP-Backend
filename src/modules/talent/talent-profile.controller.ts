@@ -5,7 +5,10 @@ import {
   Body,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { 
   ApiTags, 
@@ -13,8 +16,10 @@ import {
   ApiBearerAuth, 
   ApiOkResponse, 
   ApiCreatedResponse,
-  ApiUnauthorizedResponse
+  ApiUnauthorizedResponse,
+  ApiConsumes
 } from '@nestjs/swagger';
+import type { Express } from 'express';
 import { TalentProfileService } from './talent-profile.service';
 import {
   UpdatePersonalInfoDto,
@@ -32,11 +37,16 @@ export class TalentProfileController {
   constructor(private readonly talentProfileService: TalentProfileService) {}
 
   @Put('personal')
-  @ApiOperation({ summary: 'Update personal information (Title, Bio, Location, Profile Image)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('profileImage'))
+  @ApiOperation({ summary: 'Update personal info including profile image upload' })
   @ApiOkResponse({ description: 'Personal information successfully updated.' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
-  async updatePersonalInfo(@Request() req, @Body() dto: UpdatePersonalInfoDto) {
-    return this.talentProfileService.updatePersonalInfo(req.user.userId, dto);
+  async updatePersonalInfo(
+    @Request() req, 
+    @Body() dto: UpdatePersonalInfoDto,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    return this.talentProfileService.updatePersonalInfo(req.user.userId, dto, file);
   }
 
   @Post('experience')
@@ -56,11 +66,16 @@ export class TalentProfileController {
   }
 
   @Put('skills')
-  @ApiOperation({ summary: 'Update skills, certifications, portfolio, and resume' })
-  @ApiOkResponse({ description: 'Skills and links successfully updated.' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token.' })
-  async updateSkills(@Request() req, @Body() dto: UpdateSkillsDto) {
-    return this.talentProfileService.updateSkills(req.user.userId, dto);
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('resume'))
+  @ApiOperation({ summary: 'Update skills, portfolio, and upload resume' })
+  @ApiOkResponse({ description: 'Skills and resume successfully updated.' })
+  async updateSkills(
+    @Request() req, 
+    @Body() dto: UpdateSkillsDto,
+    @UploadedFile() file?: Express.Multer.File
+  ) {
+    return this.talentProfileService.updateSkills(req.user.userId, dto, file);
   }
 
   // Added Endpoint for Employment Preferences

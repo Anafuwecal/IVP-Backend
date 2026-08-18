@@ -28,7 +28,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiTags('Messaging')
 @ApiBearerAuth() // Tells Swagger all endpoints in this controller require a JWT
 @UseGuards(JwtAuthGuard)
-@Controller('api/v1/messaging')
+@Controller('messaging')
 export class MessagingController {
   constructor(private readonly messagingService: MessagingService) {}
 

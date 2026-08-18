@@ -63,59 +63,59 @@ enum InterviewStatus {
 
 // --- CORE MODELS ---
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique @db.VarChar(255)
-  passwordHash      String
-  role              Role      @default(TALENT)
-  isVerified        Boolean   @default(false) // Inactive until verified
-  verificationToken String?
-  resetToken        String?
-  resetTokenExpiry  DateTime?
+  id                   String    @id @default(uuid())
+  email                String    @unique @db.VarChar(255)
+  passwordHash         String
+  role                 Role      @default(TALENT)
+  isVerified           Boolean   @default(false) // Inactive until verified
+  verificationToken    String?
+  resetToken           String?
+  resetTokenExpiry     DateTime?
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   status AccountStatus @default(ACTIVE)
 
   // Admin Auth fields
   adminLoginToken       String?
   adminLoginTokenExpiry DateTime?
-  broadcastsSent BroadcastNotification[]
+  broadcastsSent        BroadcastNotification[]
 
   talentProfile   TalentProfile?
   employerProfile EmployerProfile?
-  auditLogs            AuditLog[]
+  auditLogs       AuditLog[]
 }
 
 model TalentProfile {
-  id                String         @id @default(uuid())
-  userId            String         @unique
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   firstName         String
   lastName          String
-  phoneNumber String?
-  headline          String?        @db.VarChar(255)
-  professionalTitle String?        @db.VarChar(255)
+  phoneNumber       String?
+  age               Int?
+  headline          String?  @db.VarChar(255)
+  professionalTitle String?  @db.VarChar(255)
   bio               String?
   location          String?
-  jobType          String? 
-  salary           String? 
+  jobType           String?
+  salary            String?
   skills            String[]
-  certifications    String[]       @default([])
+  certifications    String[] @default([])
   resumeUrl         String?
 
-  portfolioUrl     String?
+  portfolioUrl String?
 
-  preferredJobType String? // e.g., "Full-time", "Contract"
+  preferredJobType  String? // e.g., "Full-time", "Contract"
   preferredLocation String? // e.g., "Remote", "On-site"
   expectedSalary    String?
   availability      String? // e.g., "Immediate", "2 Weeks"
-  profileImageUrl  String?
+  profileImageUrl   String?
 
-
-  profilePercent    Int            @default(0)
-  conversations     Conversation[]
+  profilePercent Int            @default(0)
+  conversations  Conversation[]
 
   applications   Application[]
   workExperience WorkExperience[]
@@ -151,7 +151,7 @@ model EmployerProfile {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyName       String  @db.VarChar(255)
   contactPerson     String
-  phoneNumber String?
+  phoneNumber       String?
   industry          String
   companySize       String
   rcNumber          String? @unique // Company Registration / RC Number
@@ -181,7 +181,7 @@ model Job {
   jobType         String?
   industry        String?
   experienceLevel String?
-  salary          Decimal?        // (or Int?)
+  salary          Decimal? // (or Int?)
   qualification   String
   deadline        DateTime
   status          JobStatus       @default(DRAFT)
@@ -310,17 +310,17 @@ model Message {
 }
 
 model AuditLog {
-  id           String   @id @default(uuid())
-  adminId      String
-  admin        User     @relation(fields: [adminId], references: [id])
-  
-  action       String   
-  entity       String   // e.g., "FAQ", "ANNOUNCEMENT", "USER"
-  entityId     String?  // Optional ID of the affected record
-  targetUserId String?  // Kept from your original schema 
-  details      Json?    // Using Json for flexible data storage
-  
-  createdAt    DateTime @default(now())
+  id      String @id @default(uuid())
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  action       String
+  entity       String // e.g., "FAQ", "ANNOUNCEMENT", "USER"
+  entityId     String? // Optional ID of the affected record
+  targetUserId String? // Kept from your original schema 
+  details      Json? // Using Json for flexible data storage
+
+  createdAt DateTime @default(now())
 }
 
 model Faq {
@@ -349,18 +349,18 @@ model SiteContent {
 }
 
 model BroadcastNotification {
-  id             String   @id @default(uuid())
-  title          String
-  message        String
-  
-  targetAudience String   
-  
-  status         String   @default("PENDING") // 'PENDING', 'COMPLETED', 'FAILED'
-  successCount   Int      @default(0)
-  failureCount   Int      @default(0)
-  
-  adminId        String
-  admin          User     @relation(fields: [adminId], references: [id])
-  
-  createdAt      DateTime @default(now())
+  id      String @id @default(uuid())
+  title   String
+  message String
+
+  targetAudience String
+
+  status       String @default("PENDING") // 'PENDING', 'COMPLETED', 'FAILED'
+  successCount Int    @default(0)
+  failureCount Int    @default(0)
+
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  createdAt DateTime @default(now())
 }

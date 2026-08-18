@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TalentProfileController } from './talent-profile.controller';
 import { TalentProfileService } from './talent-profile.service';
-import { PrismaService } from '../prisma/prisma.service'; // Adjust path
+import { PrismaService } from '../prisma/prisma.service';
+import { FileUploadService } from '../upload/file-upload.service';
 
 @Module({
-  controllers: [TalentProfileController], // MUST be listed here
-  providers: [TalentProfileService, PrismaService],
+  controllers: [TalentProfileController],
+  providers: [TalentProfileService, PrismaService, FileUploadService],
 })
 export class TalentProfileModule {}

@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileUploadService } from '../upload/file-upload.service';
+import type { Express } from 'express';
 import {
   UpdatePersonalInfoDto,
   AddExperienceDto,
@@ -10,15 +12,28 @@ import {
 
 @Injectable()
 export class TalentProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileUploadService: FileUploadService 
+  ) {}
 
   // Rule 1: Update personal information
-  async updatePersonalInfo(userId: string, dto: UpdatePersonalInfoDto) {
+  async updatePersonalInfo(userId: string, dto: UpdatePersonalInfoDto, file?: Express.Multer.File) {
     const profile = await this.getProfileByUserId(userId);
+
+    // Extract swagger document field 'profileImage' out of the data payload
+    const { profileImage, ...updateData } = dto as any;
+
+    // Handle File Upload
+    if (file) {
+      // Assuming your FileUploadService has a method returning the uploaded URL
+      const uploadedUrl = await this.fileUploadService.uploadFile(file); 
+      updateData.profileImageUrl = uploadedUrl;
+    }
 
     await this.prisma.talentProfile.update({
       where: { id: profile.id },
-      data: dto, // Handles title, bio, location, and profileImageUrl
+      data: updateData, // Handles title, bio, location, age, phoneNumber, and newly uploaded profileImageUrl
     });
 
     return this.calculateProfileCompletion(userId);
@@ -53,17 +68,28 @@ export class TalentProfileService {
   }
 
   // Rule 4: Update skills, certifications, portfolio, and resume
-  async updateSkills(userId: string, dto: UpdateSkillsDto) {
+  async updateSkills(userId: string, dto: UpdateSkillsDto, file?: Express.Multer.File) {
     const profile = await this.getProfileByUserId(userId);
+
+    // Extract swagger document field 'resume' out of the data payload
+    const { resume, ...dtoData } = dto as any;
+    
+    const updateData: any = {
+      skills: dtoData.skills,
+      certifications: dtoData.certifications || [],
+      portfolioUrl: dtoData.portfolioUrl, 
+    };
+
+    // Handle Resume Upload
+    if (file) {
+      // Assuming your FileUploadService has a method returning the uploaded URL
+      const uploadedUrl = await this.fileUploadService.uploadFile(file); 
+      updateData.resumeUrl = uploadedUrl;
+    }
 
     await this.prisma.talentProfile.update({
       where: { id: profile.id },
-      data: {
-        skills: dto.skills,
-        certifications: dto.certifications || [],
-        portfolioUrl: dto.portfolioUrl, // Added portfolio
-        resumeUrl: dto.resumeUrl,       // Added resume
-      },
+      data: updateData,
     });
 
     return this.calculateProfileCompletion(userId);

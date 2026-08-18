@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsArray, IsUrl, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsUrl, IsDateString, IsInt, IsPhoneNumber } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdatePersonalInfoDto {
@@ -17,11 +18,53 @@ export class UpdatePersonalInfoDto {
   @IsString()
   location?: string;
 
-  // Added profileImageUrl, removed resumeUrl
-  @ApiPropertyOptional({ example: 'https://example.com/profile.jpg', description: 'Link to a hosted profile image' })
+  @ApiPropertyOptional({ example: '+2348000000000', description: 'Phone number' })
   @IsOptional()
-  @IsUrl({}, { message: 'Profile image must be a valid URL' })
-  profileImageUrl?: string;
+  @IsString()
+  phoneNumber?: string;
+
+  @ApiPropertyOptional({ example: 25, description: 'Age of the talent' })
+  @IsOptional()
+  @Type(() => Number) // Parses form-data string to number
+  @IsInt()
+  age?: number;
+
+  @ApiPropertyOptional({ type: 'string', format: 'binary', description: 'Profile image file upload' })
+  @IsOptional()
+  profileImage?: any; // Handled by interceptor, documented for Swagger
+}
+
+export class UpdateSkillsDto {
+  @ApiProperty({ 
+    example: 'JavaScript,TypeScript,Node.js', 
+    description: 'Comma-separated skills',
+    type: String,
+  })
+  @IsOptional()
+  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',').map(s => s.trim())))
+  @IsArray()
+  @IsString({ each: true })
+  skills?: string[];
+
+  @ApiPropertyOptional({ 
+    example: 'AWS Certified,FreeCodeCamp', 
+    description: 'Comma-separated certifications',
+    type: String,
+  })
+  @IsOptional()
+  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',').map(s => s.trim())))
+  @IsArray()
+  @IsString({ each: true })
+  certifications?: string[];
+
+  @ApiPropertyOptional({ example: 'https://github.com/yourusername', description: 'Link to portfolio or GitHub' })
+  @IsOptional()
+  @IsUrl({}, { message: 'Portfolio must be a valid URL' })
+  portfolioUrl?: string;
+
+  @ApiPropertyOptional({ type: 'string', format: 'binary', description: 'Resume PDF file upload' })
+  @IsOptional()
+  resume?: any; // Handled by interceptor, documented for Swagger
 }
 
 export class AddExperienceDto {
@@ -69,37 +112,6 @@ export class AddEducationDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
-}
-
-export class UpdateSkillsDto {
-  @ApiProperty({ 
-    example: ['JavaScript', 'TypeScript', 'Node.js', 'React', 'Vue'], 
-    description: 'Array of technical or soft skills',
-    type: [String]
-  })
-  @IsArray()
-  @IsString({ each: true })
-  skills: string[];
-
-  @ApiPropertyOptional({ 
-    example: ['AWS Certified Developer', 'FreeCodeCamp Backend Certification'], 
-    description: 'Array of certifications obtained',
-    type: [String]
-  })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  certifications?: string[];
-
-  @ApiPropertyOptional({ example: 'https://github.com/yourusername', description: 'Link to portfolio or GitHub' })
-  @IsOptional()
-  @IsUrl({}, { message: 'Portfolio must be a valid URL' })
-  portfolioUrl?: string;
-
-  @ApiPropertyOptional({ example: 'https://example.com/resume.pdf', description: 'Link to a hosted resume PDF' })
-  @IsOptional()
-  @IsUrl({}, { message: 'Resume must be a valid URL' })
-  resumeUrl?: string;
 }
 
 export class UpdateEmploymentPreferenceDto {
