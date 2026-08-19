@@ -71,7 +71,7 @@ export class EmployerService {
   }
 
   private async uploadCompanyLogo(userId: string, file: Express.Multer.File): Promise<string> {
-    // TODO: Replace with your actual cloud storage method (e.g. Supabase Storage client or S3)
+    // Replace with your actual cloud storage method (e.g. Supabase Storage client or S3)
     // For now, return a placeholder/hosted file path
     const fileExtension = file.originalname.split('.').pop();
     const fileName = `logos/employer-${userId}-${Date.now()}.${fileExtension}`;

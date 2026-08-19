@@ -130,12 +130,29 @@ export class AuthService {
 
     // Requirement: Only verified accounts can log in
     if (!user.isVerified) {
+      // --- NEW: RESEND VERIFICATION EMAIL LOGIC ---
+      // 1. Generate a fresh verification token
+      const newVerificationToken = randomBytes(32).toString('hex');
+
+      // 2. Update the user record in the database with the new token
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { verificationToken: newVerificationToken },
+      });
+
+      // 3. Send the new verification email
+      await this.emailService.sendVerificationEmail(
+        user.email,
+        newVerificationToken,
+      );
+
+      // 4. Inform the user that they must verify, and a new link was sent
       throw new UnauthorizedException(
-        'Please verify your email address before logging in.',
+        'Please verify your email address before logging in. A new verification link has just been sent to your email.',
       );
     }
 
-    // Success: Return JWT (Frontend will handle the redirect to Talent Dashboard)
+    // Success: Return JWT (Frontend will handle the redirect to Dashboard)
     return this.generateToken(user.id, user.email, user.role);
   }
 

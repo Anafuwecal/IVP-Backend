@@ -36,23 +36,47 @@ export class UpdatePersonalInfoDto {
 
 export class UpdateSkillsDto {
   @ApiProperty({ 
-    example: 'JavaScript,TypeScript,Node.js', 
-    description: 'Comma-separated skills',
-    type: String,
+    example: 'TypeScript,NestJS,React', 
+    description: 'Comma-separated skills or JSON array string',
   })
   @IsOptional()
-  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',').map(s => s.trim())))
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        // In case the frontend sends a JSON stringified array: '["React", "Node"]'
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        // If it's a regular comma-separated string: 'React, Node'
+        return value.split(',').map((s) => s.trim());
+      }
+    }
+    return value;
+  })
   @IsArray()
   @IsString({ each: true })
   skills?: string[];
 
   @ApiPropertyOptional({ 
     example: 'AWS Certified,FreeCodeCamp', 
-    description: 'Comma-separated certifications',
-    type: String,
+    description: 'Comma-separated certifications or JSON array string',
   })
   @IsOptional()
-  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',').map(s => s.trim())))
+  @Transform(({ value }) => { // <-- Add the exact same transform here
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        return value.split(',').map((s) => s.trim());
+      }
+    }
+    return value;
+  })
   @IsArray()
   @IsString({ each: true })
   certifications?: string[];

@@ -42,12 +42,12 @@ export class UpdateEmployerProfileDto {
   @IsUrl({}, { message: 'Website must be a valid URL (e.g. https://company.com)' })
   website?: string;
 
-  // This property isn't validated by class-validator, but adding it allows 
-  // Swagger UI to render a "Choose File" upload button!
+  // --- THE FIX IS HERE ---
   @ApiPropertyOptional({ 
     type: 'string', 
     format: 'binary', 
     description: 'Company logo image file (jpg, jpeg, png, webp). Max size 5MB.' 
   })
-  logo?: any; 
+  @IsOptional() // <-- This tells NestJS not to reject the payload
+  logo?: any;   // <-- Changed to 'any' to avoid TS Node/Browser DOM conflicts
 }
