@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateEmployerProfileDto } from './dto/update-employer-profile.dto';
+import { FileUploadService } from '../upload/file-upload.service';
 
 @Injectable()
 export class EmployerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileUploadService: FileUploadService,
+  ) {}
 
   async getProfile(userId: string) {
     const profile = await this.prisma.employerProfile.findUnique({
@@ -34,12 +38,10 @@ export class EmployerService {
 
     let logoUrl = existingProfile.logoUrl;
 
-    // Handle file upload if provided (e.g. upload to Supabase Storage, S3, or Cloudinary)
     if (logoFile) {
-      logoUrl = await this.uploadCompanyLogo(userId, logoFile);
+      logoUrl = await this.fileUploadService.uploadFile(logoFile);
     }
 
-    // Merge updated fields with existing fields to evaluate completeness
     const updatedData = {
       ...dto,
       ...(logoUrl && { logoUrl }),
@@ -77,15 +79,5 @@ export class EmployerService {
       message: 'Company profile updated successfully.',
       profile,
     };
-  }
-
-  private async uploadCompanyLogo(userId: string, file: Express.Multer.File): Promise<string> {
-    // Replace with your actual cloud storage method (e.g. Supabase Storage client or S3)
-    // For now, return a placeholder/hosted file path
-    const fileExtension = file.originalname.split('.').pop();
-    const fileName = `logos/employer-${userId}-${Date.now()}.${fileExtension}`;
-    
-    // Example: return public URL from cloud storage bucket
-    return `https://your-bucket-url.supabase.co/storage/v1/object/public/company-logos/${fileName}`;
   }
 }
