@@ -159,6 +159,8 @@ model EmployerProfile {
   logoUrl           String? // Updated later via PATCH /api/v1/employer/profile
   isProfileComplete Boolean @default(false) // Mandatory check before posting jobs
   website           String? @db.VarChar(255)
+  location          String? // e.g., "Lagos, Nigeria"
+  officeAddress     String? // e.g., "123 Tech Avenue, Victoria Island"
 
   jobs               Job[]
   subscriptions      EmployerSubscription[]

@@ -50,10 +50,19 @@ export class EmployerService {
     const industry = updatedData.industry ?? existingProfile.industry;
     const companySize = updatedData.companySize ?? existingProfile.companySize;
     const rcNumber = updatedData.rcNumber ?? existingProfile.rcNumber;
+    const location = updatedData.location ?? existingProfile.location;
+    const officeAddress = updatedData.officeAddress ?? existingProfile.officeAddress;
+
 
     // Check requirement #4 & #5: Profile is complete when all required info is provided
     const isProfileComplete = Boolean(
-      companyName && contactPerson && industry && companySize && rcNumber,
+      companyName && 
+      contactPerson && 
+      industry && 
+      companySize && 
+      rcNumber && 
+      location &&       
+      officeAddress     
     );
 
     const profile = await this.prisma.employerProfile.update({

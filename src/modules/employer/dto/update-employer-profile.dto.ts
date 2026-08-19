@@ -14,6 +14,18 @@ export class UpdateEmployerProfileDto {
   @IsNotEmpty()
   contactPerson?: string;
 
+  @ApiPropertyOptional({ example: 'Lagos, Nigeria', description: 'General city/state/country location' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  location?: string;
+
+  @ApiPropertyOptional({ example: '123 Tech Avenue, Victoria Island', description: 'Full physical office address' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  officeAddress?: string;
+
   @ApiPropertyOptional({ example: 'Fintech', description: 'Updated industry sector' })
   @IsOptional()
   @IsString()
@@ -50,4 +62,5 @@ export class UpdateEmployerProfileDto {
   })
   @IsOptional() // <-- This tells NestJS not to reject the payload
   logo?: any;   // <-- Changed to 'any' to avoid TS Node/Browser DOM conflicts
+
 }
