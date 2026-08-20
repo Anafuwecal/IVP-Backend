@@ -81,6 +81,8 @@ export class SystemService {
           employmentType: 'Full-Time',
           qualification: 'BSc Degree',
           deadline: new Date('2026-12-31T23:59:59Z'),
+          department: 'General',
+          requiredSkills: [],
         },
       });
 

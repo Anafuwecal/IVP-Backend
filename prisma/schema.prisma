@@ -183,7 +183,10 @@ model Job {
   jobType         String?
   industry        String?
   experienceLevel String?
-  salary          Decimal? // (or Int?)
+  department      String
+  minSalary       Float?       // Optional, as some jobs hide salary
+  maxSalary       Float?       // Optional
+  requiredSkills  String[]
   qualification   String
   deadline        DateTime
   status          JobStatus       @default(DRAFT)

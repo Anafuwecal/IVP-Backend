@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { 
+  IsString, 
+  IsNotEmpty, 
+  IsDateString, 
+  IsEnum, 
+  IsOptional, 
+  IsNumber, 
+  IsArray, 
+  ArrayMinSize 
+} from 'class-validator';
 import { JobStatus } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -36,5 +45,29 @@ export class CreateJobDto {
   @ApiPropertyOptional({ enum: JobStatus, example: 'OPEN', description: 'The initial status of the job' })
   @IsOptional()
   @IsEnum(JobStatus)
-  status?: JobStatus; 
+  status?: JobStatus;
+
+  @ApiProperty({ example: 'Engineering', description: 'The department or category of the job' })
+  @IsString()
+  @IsNotEmpty()
+  department: string;
+
+  @ApiPropertyOptional({ example: 500000, description: 'Minimum salary (e.g., monthly or annually depending on your platform standard)' })
+  @IsOptional()
+  @IsNumber()
+  minSalary?: number;
+
+  @ApiPropertyOptional({ example: 800000, description: 'Maximum salary' })
+  @IsOptional()
+  @IsNumber()
+  maxSalary?: number;
+
+  @ApiProperty({ 
+    example: ['Node.js', 'TypeScript', 'PostgreSQL', 'NestJS'], 
+    description: 'List of required skills for the role' 
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1) // Ensures they add at least 1 skill
+  requiredSkills: string[];
 }

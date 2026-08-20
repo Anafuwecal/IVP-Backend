@@ -411,8 +411,8 @@ export class JobsService {
       case 'createdAt':
         return 'createdAt';
       case 'salary':
-        // 'Job' model currently lacks a salary field; safely fallback to 'createdAt'
-        return 'createdAt';
+        // NOW IT WORKS! Sort by the maximum salary offered
+        return 'maxSalary'; 
       default:
         return 'createdAt';
     }
