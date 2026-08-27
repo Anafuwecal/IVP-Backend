@@ -243,6 +243,8 @@ model SubscriptionPlan {
   name           String                 @unique @db.VarChar(100)
   price          Decimal
   durationMonths Int // Rules 2: Predefined durations (e.g., 3, 6, 12)
+  jobLimit         Int                    @default(-1) 
+  applicationLimit Int                    @default(-1)
   benefits       String[] // Rule 3: Array of strings for benefits
   isActive       Boolean                @default(true) // Rule 11: Admin can deactivate
   subscriptions  EmployerSubscription[]

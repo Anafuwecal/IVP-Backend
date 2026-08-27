@@ -154,4 +154,65 @@ export class SubscriptionsService {
 
     console.log(`[Cron] Processed ${expiringSubs.length} expiring warnings and updated expired plans.`);
   }
+
+  // ================= USAGE TRACKING =================
+
+  async getEmployerUsage(userId: string) {
+    // 1. Get the employer profile
+    const employer = await this.prisma.employerProfile.findUnique({ 
+      where: { userId } 
+    });
+    
+    if (!employer) throw new NotFoundException('Employer profile not found');
+
+    // 2. Get the currently active subscription and its plan details
+    const activeSub = await this.prisma.employerSubscription.findFirst({
+      where: {
+        employerId: employer.id,
+        status: 'ACTIVE',
+        endDate: { gt: new Date() },
+      },
+      include: { plan: true },
+    });
+
+    // If they don't have an active plan, return a default state
+    if (!activeSub) {
+      return {
+        hasActivePlan: false,
+        message: 'No active subscription found.',
+      };
+    }
+
+    // 3. Count how many jobs the employer posted during this billing cycle
+    const jobsUsed = await this.prisma.job.count({
+      where: {
+        employerId: employer.id,
+        createdAt: {
+          gte: activeSub.startDate, // Only count jobs created AFTER the plan started
+          lte: activeSub.endDate,
+        },
+      },
+    });
+
+    // 4. Return the formatted data for your frontend progress bars
+    return {
+      hasActivePlan: true,
+      planName: activeSub.plan.name,
+      billingCycle: {
+        start: activeSub.startDate,
+        end: activeSub.endDate,
+      },
+      limits: {
+        jobs: {
+          used: jobsUsed,
+          total: activeSub.plan.jobLimit,
+          isUnlimited: activeSub.plan.jobLimit === -1,
+        },
+        applications: {
+          total: activeSub.plan.applicationLimit,
+          isUnlimited: activeSub.plan.applicationLimit === -1,
+        }
+      }
+    };
+  }
 }

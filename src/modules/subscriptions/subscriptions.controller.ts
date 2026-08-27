@@ -93,4 +93,13 @@ export class SubscriptionsController {
   ) {
     return this.subscriptionsService.purchaseSubscription(userId, planId);
   }
+
+  @Get('my-usage')
+  @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get current subscription usage (Jobs posted vs limits)' })
+  @ApiOkResponse({ description: 'Usage statistics retrieved successfully.' })
+  @ApiForbiddenResponse({ description: 'User is not an Employer.' })
+  getMyUsage(@GetUser('id') userId: string) {
+    return this.subscriptionsService.getEmployerUsage(userId);
+  }
 }

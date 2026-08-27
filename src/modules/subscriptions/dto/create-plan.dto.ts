@@ -29,4 +29,14 @@ export class CreatePlanDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({ example: 5, description: 'Maximum number of jobs allowed. Use -1 for unlimited.' })
+  @IsNumber()
+  @IsOptional()
+  jobLimit?: number;
+
+  @ApiProperty({ example: 50, description: 'Maximum applications viewable per job. Use -1 for unlimited.' })
+  @IsNumber()
+  @IsOptional()
+  applicationLimit?: number;
 }
