@@ -33,6 +33,72 @@ export class PaymentsService {
       throw new NotFoundException('Subscription plan not found');
     }
 
+    // ========================================================================
+    // NEW: INTERCEPT $0 (FREE) PLANS TO BYPASS PAYSTACK
+    // ========================================================================
+    if (Number(plan.price) === 0) {
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + plan.durationMonths);
+
+      // 1. Activate subscription immediately (CHANGED to employerSubscription)
+      const existingSub = await this.prisma.employerSubscription.findFirst({
+        where: { employerId: employer.id }
+      });
+
+      if (existingSub) {
+        // CHANGED to employerSubscription
+        await this.prisma.employerSubscription.update({
+          where: { id: existingSub.id },
+          data: {
+            planId: plan.id,
+            status: 'ACTIVE',
+            startDate,
+            endDate,
+          }
+        });
+      } else {
+        // CHANGED to employerSubscription
+        await this.prisma.employerSubscription.create({
+          data: {
+            employerId: employer.id,
+            planId: plan.id,
+            status: 'ACTIVE',
+            startDate,
+            endDate,
+          }
+        });
+      }
+
+      // 2. Create a SUCCESS payment record for $0
+      await this.prisma.payment.create({
+        data: {
+          employerId: employer.id,
+          planId: plan.id,
+          amount: 0,
+          reference: `FREE_SUB_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          status: 'SUCCESS',
+          channel: 'FREE_TIER'
+        },
+      });
+
+      // 3. Return a local URL so the frontend refreshes seamlessly
+      // Fallback to localhost if FRONTEND_URL isn't set in your .env
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return {
+        message: 'Free plan activated successfully',
+        paymentUrl: `${frontendUrl}/employer/subscription?success=true`,
+        summary: {
+          planName: plan.name,
+          amount: 0,
+          duration: `${plan.durationMonths} Months`
+        }
+      };
+    }
+    // ========================================================================
+    // END NEW $0 INTERCEPTION
+    // ========================================================================
+    
     const amountInKobo = Number(plan.price) * 100; 
     const paymentReference = `IVP_SUB_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
