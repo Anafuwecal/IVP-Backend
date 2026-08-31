@@ -1,16 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { 
+  Injectable, 
+  NotFoundException, 
+  BadRequestException, 
+  ForbiddenException, 
+  ConflictException 
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
-import { JobStatus } from '@prisma/client';
-import { FilterApplicantsDto } from './dto/filter-applicants.dto'
-import { ApplicationStatus } from '@prisma/client';
+import { JobStatus, ApplicationStatus, Prisma } from '@prisma/client';
+import { FilterApplicantsDto } from './dto/filter-applicants.dto';
 import { EmailService } from '../email/email.service';
 import { ScheduleInterviewDto } from './dto/schedule-interview.dto';
 import { FillJobDto } from './dto/fill-job.dto';
 import { SearchJobsDto } from './dto/search-jobs.dto';
-import { Prisma } from '@prisma/client';
-
 
 @Injectable()
 export class JobsService {
@@ -24,7 +27,6 @@ export class JobsService {
       where: { id: employerId },
     });
 
-    // Rule 4: Enforce verification before publishing
     if (employer?.verificationStatus !== 'APPROVED') {
       throw new ForbiddenException(
         'Your account must be verified by an administrator before you can publish job vacancies.'
@@ -43,7 +45,6 @@ export class JobsService {
     return this.prisma.job.create({
       data: {
         ...dto,
-        // We tell Prisma to connect via the unique userId
         employer: {
           connect: { userId: userId }, 
         },
@@ -52,11 +53,10 @@ export class JobsService {
     });
   }
 
-  // Requirement #5: Edit unpublished and active jobs
   async updateJob(jobId: string, userId: string, dto: UpdateJobDto) {
     const job = await this.prisma.job.findUnique({ 
       where: { id: jobId },
-      include: { employer: true } // We must include the employer relation to check ownership
+      include: { employer: true }
     });
 
     if (!job) throw new NotFoundException('Job not found');
@@ -69,7 +69,6 @@ export class JobsService {
     });
   }
 
-  // Requirement #6: Close a job so it no longer accepts applications
   async closeJob(jobId: string, userId: string) {
     const job = await this.prisma.job.findUnique({ 
       where: { id: jobId },
@@ -85,19 +84,16 @@ export class JobsService {
     });
   }
 
-  // Helper to list jobs for the employer dashboard
   async getEmployerJobs(userId: string) {
     return this.prisma.job.findMany({
       where: { 
-        employer: { userId: userId } // Find jobs where the employer's userId matches our token
+        employer: { userId: userId }
       },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  // View, filter, and fetch profiles/status
   async getJobApplicants(jobId: string, userId: string, filters: FilterApplicantsDto) {
-    // 1. Verify the job belongs to this employer
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
       include: { employer: true },
@@ -108,7 +104,6 @@ export class JobsService {
       throw new ForbiddenException('You can only view applicants for your own jobs');
     }
 
-    // 2. Build the dynamic filter query
     const whereClause: any = { jobId };
     
     if (filters.status) {
@@ -117,17 +112,16 @@ export class JobsService {
 
     if (filters.skill) {
       whereClause.talent = {
-        skills: { has: filters.skill }, // Searches the PostgreSQL String array
+        skills: { has: filters.skill },
       };
     }
 
-    // 3. Return applications with the full Talent profile attached
     return this.prisma.application.findMany({
       where: whereClause,
       include: {
         talentProfile: {
           include: {
-            user: { select: { email: true } }, // Attach the user's email for contact
+            user: { select: { email: true } },
           },
         },
       },
@@ -135,23 +129,7 @@ export class JobsService {
     });
   }
 
-  // Bonus: Allow employers to update the candidate's status
   async updateApplicationStatus(jobId: string, applicationId: string, userId: string, status: ApplicationStatus) {
-    // Verify ownership
-    const job = await this.prisma.job.findUnique({
-      where: { id: jobId },
-      include: { employer: true },
-    });
-
-    if (!job || job.employer.userId !== userId) {
-      throw new ForbiddenException('Access denied');
-    }
-
-    return this.prisma.application.update({
-      where: { id: applicationId },
-      data: { status },
-    });
-
     const application = await this.prisma.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -172,12 +150,10 @@ export class JobsService {
       throw new NotFoundException('Application not found');
     }
 
-    // Security Check: Verify job ownership
     if (application?.job?.employer?.userId !== userId) {
       throw new ForbiddenException('You can only update applications for your own job postings');
     }
 
-    // 2. Immediate Database Update (Rule #3)
     const updatedApplication = await this.prisma.application.update({
       where: { id: applicationId },
       data: { status },
@@ -192,7 +168,6 @@ export class JobsService {
       },
     });
 
-    // 3. Trigger Email Notification (Rule #4)
     const talentEmail = application?.talentProfile?.user?.email ?? '';
     const talentName = `${application?.talentProfile?.firstName ?? ''} ${application?.talentProfile?.lastName ?? ''}`.trim();
     const jobTitle = application?.job?.title ?? 'the position';
@@ -208,7 +183,6 @@ export class JobsService {
     };
   }
 
-  // 1. Schedule Interview (Rule 1 & 2)
   async scheduleInterview(
     jobId: string,
     applicationId: string,
@@ -228,7 +202,6 @@ export class JobsService {
       throw new ForbiddenException('Access denied');
     }
 
-    // Rule 1: Must be SHORTLISTED
     if (application.status !== 'SHORTLISTED') {
       throw new BadRequestException('You can only schedule interviews for shortlisted candidates.');
     }
@@ -242,7 +215,6 @@ export class JobsService {
       },
     });
 
-    // Rule 3: Notify Talent
     this.emailService.sendInterviewEmail(
       application.talentProfile.user.email,
       application.talentProfile.firstName,
@@ -255,12 +227,11 @@ export class JobsService {
     return { message: 'Interview scheduled successfully', interview };
   }
 
-  // 2. Reschedule or Cancel (Rule 4)
   async updateInterview(
     interviewId: string,
     userId: string,
     action: 'RESCHEDULE' | 'CANCEL',
-    dto?: ScheduleInterviewDto, // Optional, only needed if rescheduling
+    dto?: ScheduleInterviewDto,
   ) {
     const interview = await this.prisma.interview.findUnique({
       where: { id: interviewId },
@@ -294,7 +265,6 @@ export class JobsService {
       data: updatedData,
     });
 
-    // Notify Talent of change
     this.emailService.sendInterviewEmail(
       interview.application.talentProfile.user.email,
       interview.application.talentProfile.firstName,
@@ -307,14 +277,13 @@ export class JobsService {
     return { message: `Interview ${action.toLowerCase()}d successfully`, interview: updatedInterview };
   }
 
-  //Mark as filled, process hired/rejected candidates, and retain records
   async markJobAsFilled(jobId: string, userId: string, dto: FillJobDto) {
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
       include: {
         employer: true,
         applications: {
-          include: { talentProfile: { include: { user: true } } }, // Fetch all applicants for mass email
+          include: { talentProfile: { include: { user: true } } }, 
         },
       },
     });
@@ -323,7 +292,6 @@ export class JobsService {
     if (job.employer.userId !== userId) throw new ForbiddenException('Access denied');
     if (job.status === 'FILLED') throw new BadRequestException('Job is already marked as filled');
 
-    //If an applicationId was provided, mark that specific candidate as ACCEPTED
     if (dto.applicationId) {
       const hiredApp = job.applications.find(app => app.id === dto.applicationId);
       if (!hiredApp) throw new NotFoundException('Provided application ID does not belong to this job');
@@ -333,7 +301,6 @@ export class JobsService {
         data: { status: 'ACCEPTED' },
       });
 
-      // Send Congratulations Email to the hired candidate
       this.emailService.sendApplicationStatusEmail(
         hiredApp.talentProfile.user.email,
         hiredApp.talentProfile.firstName,
@@ -343,11 +310,9 @@ export class JobsService {
       ).catch(console.error);
     }
 
-    //Process all OTHER candidates (Reject them and notify them)
     const unsuccessfulApps = job.applications.filter(app => app.id !== dto.applicationId);
     
     if (unsuccessfulApps.length > 0) {
-      // Mass update database status
       await this.prisma.application.updateMany({
         where: { 
           jobId, 
@@ -356,7 +321,6 @@ export class JobsService {
         data: { status: 'REJECTED' },
       });
 
-      // Mass trigger emails
       unsuccessfulApps.forEach(app => {
         this.emailService.sendJobClosedEmail(
           app.talentProfile.user.email,
@@ -367,14 +331,12 @@ export class JobsService {
       });
     }
 
-    //Update Job Status to FILLED (Record is retained in DB)
     return this.prisma.job.update({
       where: { id: jobId },
       data: { status: 'FILLED' },
     });
   }
 
-  //Admin view of all filled jobs
   async getAdminFilledJobs() {
     return this.prisma.job.findMany({
       where: { status: 'FILLED' },
@@ -384,68 +346,164 @@ export class JobsService {
   }
 
   async searchJobs(query: SearchJobsDto) {
-  const where: Prisma.JobWhereInput = {
-    status: 'PUBLISHED',
-    deadline: { gt: new Date() },
-  };
+    const where: Prisma.JobWhereInput = {
+      status: 'PUBLISHED',
+      deadline: { gt: new Date() },
+    };
 
-  // Keyword search (searches job title and description)
-  if (query.keyword) {
-    where.OR = [
-      { title: { contains: query.keyword, mode: 'insensitive' } },
-      { description: { contains: query.keyword, mode: 'insensitive' } },
-    ];
+    if (query.keyword) {
+      where.OR = [
+        { title: { contains: query.keyword, mode: 'insensitive' } },
+        { description: { contains: query.keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    if (query.jobType) where.jobType = query.jobType;
+    if (query.location) where.location = { contains: query.location, mode: 'insensitive' };
+    if (query.industry) where.industry = query.industry;
+    if (query.experienceLevel) where.experienceLevel = query.experienceLevel;
+
+    const getSortField = (sortBy?: string): keyof Prisma.JobOrderByWithRelationInput => {
+      switch (sortBy) {
+        case 'deadline':
+          return 'deadline';
+        case 'createdAt':
+          return 'createdAt';
+        case 'salary':
+          return 'maxSalary'; 
+        default:
+          return 'createdAt';
+      }
+    };
+
+    const sortOrder = query.sortOrder || 'desc';
+    const sortField = getSortField(query.sortBy);
+
+    const orderBy: Prisma.JobOrderByWithRelationInput = {
+      [sortField]: sortOrder,
+    };
+
+    const jobs = await this.prisma.job.findMany({
+      where,
+      orderBy,
+      include: {
+        employer: {
+          select: { companyName: true, logoUrl: true },
+        },
+      },
+    });
+
+    if (jobs.length === 0) {
+      return {
+        message: 'No jobs found matching your search criteria.',
+        data: [],
+      };
+    }
+
+    return {
+      message: 'Jobs retrieved successfully.',
+      count: jobs.length,
+      data: jobs,
+    };
+  }
+}
+
+@Injectable()
+export class SavedJobsService {
+  constructor(private prisma: PrismaService) {}
+
+  async saveJob(userId: string, jobId: string) {
+    const profile = await this.getTalentProfile(userId);
+
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+    });
+
+    if (!job) {
+      throw new NotFoundException('Job not found.');
+    }
+
+    if (job.status !== 'PUBLISHED' || new Date() > job.deadline) {
+      throw new BadRequestException('You can only save active jobs.');
+    }
+
+    const alreadySaved = await this.prisma.savedJob.findUnique({
+      where: {
+        talentProfileId_jobId: {
+          talentProfileId: profile.id,
+          jobId: job.id,
+        },
+      },
+    });
+
+    if (alreadySaved) {
+      throw new ConflictException('You have already saved this job.');
+    }
+
+    await this.prisma.savedJob.create({
+      data: {
+        talentProfileId: profile.id,
+        jobId: job.id,
+      },
+    });
+
+    return { message: 'Job saved successfully.' };
   }
 
-  // Filters
-  if (query.jobType) where.jobType = query.jobType;
-  if (query.location) where.location = { contains: query.location, mode: 'insensitive' };
-  if (query.industry) where.industry = query.industry;
-  if (query.experienceLevel) where.experienceLevel = query.experienceLevel;
+  async getSavedJobs(userId: string) {
+    const profile = await this.getTalentProfile(userId);
 
-  // Map incoming sortBy parameter safely to actual fields on the Job model
-  const getSortField = (sortBy?: string): keyof Prisma.JobOrderByWithRelationInput => {
-    switch (sortBy) {
-      case 'deadline':
-        return 'deadline';
-      case 'createdAt':
-        return 'createdAt';
-      case 'salary':
-        // NOW IT WORKS! Sort by the maximum salary offered
-        return 'maxSalary'; 
-      default:
-        return 'createdAt';
-    }
-  };
-
-  const sortOrder = query.sortOrder || 'desc';
-  const sortField = getSortField(query.sortBy);
-
-  const orderBy: Prisma.JobOrderByWithRelationInput = {
-    [sortField]: sortOrder,
-  };
-
-  const jobs = await this.prisma.job.findMany({
-    where,
-    orderBy,
-    include: {
-      employer: {
-        select: { companyName: true, logoUrl: true },
+    const savedJobs = await this.prisma.savedJob.findMany({
+      where: { talentProfileId: profile.id },
+      orderBy: { savedAt: 'desc' },
+      include: {
+        job: {
+          include: {
+            employer: {
+              select: { companyName: true, logoUrl: true },
+            },
+          },
+        },
       },
-    },
-  });
+    });
 
-  if (jobs.length === 0) {
     return {
-      message: 'No jobs found matching your search criteria.',
-      data: [],
+      message: 'Saved jobs retrieved successfully.',
+      count: savedJobs.length,
+      data: savedJobs,
     };
   }
 
-  return {
-    message: 'Jobs retrieved successfully.',
-    count: jobs.length,
-    data: jobs,
-  };
- }
+  async removeSavedJob(userId: string, jobId: string) {
+    const profile = await this.getTalentProfile(userId);
+
+    const savedJob = await this.prisma.savedJob.findUnique({
+      where: {
+        talentProfileId_jobId: {
+          talentProfileId: profile.id,
+          jobId: jobId,
+        },
+      },
+    });
+
+    if (!savedJob) {
+      throw new NotFoundException('This job is not in your saved list.');
+    }
+
+    await this.prisma.savedJob.delete({
+      where: { id: savedJob.id },
+    });
+
+    return { message: 'Job removed from saved list successfully.' };
+  }
+
+  private async getTalentProfile(userId: string) {
+    const profile = await this.prisma.talentProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile) {
+      throw new NotFoundException('Talent profile not found.');
+    }
+    return profile;
+  }
 }

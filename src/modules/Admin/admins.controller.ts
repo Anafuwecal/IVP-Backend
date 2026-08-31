@@ -1,4 +1,4 @@
-import { Controller, Post, Put, Body, Get, Query, Patch, Param, UseGuards, Req, Delete, Res } from '@nestjs/common';
+import { Controller, Post, Put, Body, Get, Query, Patch, Param, UseGuards, Req, Delete, Res, UnauthorizedException } from '@nestjs/common';
 import { AdminAuthService } from './admin.service';
 import { AdminDashboardService } from './admin.service';
 import { DashboardService } from './admin.service';
@@ -302,8 +302,14 @@ export class AdminNotificationController {
 
   @Post('broadcast')
   async sendBroadcast(@Req() req: any, @Body() dto: CreateBroadcastDto) {
-    // req.user comes from your JwtAuthGuard
-    return this.notificationService.sendBroadcast(req.user.id, dto);
+    // FIX: Safely extract the adminId checking both id and sub
+    const adminId = req.user?.id || req.user?.sub;
+    
+    if (!adminId) {
+      throw new UnauthorizedException('Admin ID not found in token');
+    }
+
+    return this.notificationService.sendBroadcast(adminId, dto);
   }
 
   @Get('history')

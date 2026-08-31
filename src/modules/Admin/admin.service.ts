@@ -834,10 +834,11 @@ export class AdminNotificationService {
 
     // 2. Resolve the target audience
     const whereClause: Prisma.UserWhereInput = {};
+  
     if (dto.targetAudience === TargetAudience.TALENT) {
-      whereClause.role = 'TALENT';
+      whereClause.role = Role.TALENT; // Use the imported Role enum
     } else if (dto.targetAudience === TargetAudience.EMPLOYER) {
-      whereClause.role = 'EMPLOYER';
+      whereClause.role = Role.EMPLOYER; // Use the imported Role enum
     }
     // If 'ALL', we leave the whereClause empty to fetch everyone
 

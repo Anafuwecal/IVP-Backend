@@ -1,22 +1,19 @@
-import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiBearerAuth, 
-  ApiOkResponse, 
-  ApiCreatedResponse, 
-  ApiParam, 
-  ApiForbiddenResponse 
+  Controller, Post, Body, Patch, Param, Get, Query, 
+  UseGuards, UsePipes, ValidationPipe, Request, HttpCode, HttpStatus, Delete 
+} from '@nestjs/common';
+import { 
+  ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, 
+  ApiCreatedResponse, ApiParam, ApiForbiddenResponse 
 } from '@nestjs/swagger';
-import { JobsService } from './jobs.service';
+import { JobsService, SavedJobsService } from './jobs.service'; // Added SavedJobsService
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { Role } from '@prisma/client';
-import { ApplicationStatus } from '@prisma/client';
+import { Role, ApplicationStatus } from '@prisma/client';
 import { ProfileCompletedGuard } from '../auth/guards/profile-completed.guard'; 
 import { FilterApplicantsDto } from './dto/filter-applicants.dto';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
@@ -26,7 +23,7 @@ import { ActiveSubscriptionGuard } from '../subscriptions/guards/active-subscrip
 import { SearchJobsDto } from './dto/search-jobs.dto';
 
 @ApiTags('Jobs')
-@ApiBearerAuth() // Indicates all endpoints require authentication
+@ApiBearerAuth()
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
@@ -216,5 +213,38 @@ export class JobsController {
   @ApiOkResponse({ description: 'Returns a paginated list of matching jobs.' })
   async searchJobs(@Query() query: SearchJobsDto) {
     return this.jobsService.searchJobs(query);
+  }
+} // <--- JobsController NOW CLOSES HERE
+
+@ApiTags('Saved Jobs')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard) // <--- Switched to your JwtAuthGuard
+@Controller('jobs/saved')
+export class SavedJobsController {
+  constructor(private readonly savedJobsService: SavedJobsService) {}
+
+  @Post(':jobId')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Save a job posting to the user profile' })
+  @ApiParam({ name: 'jobId', description: 'The UUID of the job to save' })
+  @ApiCreatedResponse({ description: 'Job successfully saved.' })
+  async saveJob(@Request() req: any, @Param('jobId') jobId: string) {
+    return this.savedJobsService.saveJob(req.user.userId, jobId);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all jobs saved by the authenticated user' })
+  @ApiOkResponse({ description: 'List of saved jobs retrieved successfully.' })
+  async getSavedJobs(@Request() req: any) {
+    return this.savedJobsService.getSavedJobs(req.user.userId);
+  }
+
+  @Delete(':jobId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove a job from the user’s saved jobs list' })
+  @ApiParam({ name: 'jobId', description: 'The UUID of the job to unsave' })
+  @ApiOkResponse({ description: 'Job successfully removed from saved list.' })
+  async removeSavedJob(@Request() req: any, @Param('jobId') jobId: string) {
+    return this.savedJobsService.removeSavedJob(req.user.userId, jobId);
   }
 }
