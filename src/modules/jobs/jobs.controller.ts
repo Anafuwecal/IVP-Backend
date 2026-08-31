@@ -166,6 +166,15 @@ export class JobsController {
     return this.jobsService.scheduleInterview(jobId, applicationId, employerId, dto);
   }
 
+  @Get('interviews')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get all scheduled interviews for the authenticated employer' })
+  @ApiOkResponse({ description: 'List of interviews retrieved successfully.' })
+  getEmployerInterviews(@GetUser('id') employerId: string) {
+    return this.jobsService.getEmployerInterviews(employerId);
+  }
+
   @Patch(':id/fill')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER)

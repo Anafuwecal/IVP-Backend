@@ -227,6 +227,33 @@ export class JobsService {
     return { message: 'Interview scheduled successfully', interview };
   }
 
+  async getEmployerInterviews(userId: string) {
+  return this.prisma.interview.findMany({
+    where: {
+      application: {
+        job: {
+          employer: { userId },
+        },
+      },
+    },
+    include: {
+      application: {
+        include: {
+          talentProfile: {
+            select: {
+              firstName: true,
+              lastName: true,
+              user: { select: { email: true } },
+            },
+          },
+          job: { select: { id: true, title: true } },
+        },
+      },
+    },
+    orderBy: { scheduledAt: 'asc' },
+  });
+}
+
   async updateInterview(
     interviewId: string,
     userId: string,
