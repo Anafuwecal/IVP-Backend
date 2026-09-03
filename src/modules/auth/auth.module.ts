@@ -10,6 +10,7 @@ import { EmailModule } from '../email/email.module';
 @Module({
   imports: [
     EmailModule,
+    ConfigModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

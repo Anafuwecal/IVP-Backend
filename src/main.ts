@@ -18,6 +18,7 @@ async function bootstrap() {
     process.env.FRONTEND_URL, // Good practice to pull from environment variables
    ].filter(Boolean), 
    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+   allowedHeaders: ['Content-Type', 'Authorization'],
    credentials: true,
   });
 
