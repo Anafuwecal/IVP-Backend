@@ -5,13 +5,16 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service'; 
+import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
 
 @Injectable()
 export class ApplicationsService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async applyForJob(userId: string, jobId: string) {
@@ -88,7 +91,13 @@ export class ApplicationsService {
       job.title, 
       applicantFullName
     );
-    
+
+    this.notificationsService.createNotification({
+      userId: job.employer.userId,
+      type: 'APPLICATION',
+      title: 'New Application Received',
+      description: `${applicantFullName} has applied for your job role: ${job.title}`,
+    }).catch(err => console.error('Notification failed:', err));
 
     return {
       message: 'Application submitted successfully.',

@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MessagingGateway } from './messaging.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagingService {
@@ -15,7 +16,8 @@ export class MessagingService {
 
   constructor(
     private prisma: PrismaService,
-    private messagingGateway: MessagingGateway
+    private messagingGateway: MessagingGateway,
+    private notificationsService: NotificationsService,
   ) {}
 
   // 1. SEND MESSAGE
@@ -119,6 +121,13 @@ export class MessagingService {
           name: senderProfileName,
         },
       });
+
+      this.notificationsService.createNotification({
+        userId: receiverUserId,
+        type: 'MESSAGE',
+        title: 'New Message',
+        description: `You have a new message from ${senderProfileName}.`,
+      }).catch(err => console.error('Notification failed:', err));
 
       return message;
     } catch (error) {

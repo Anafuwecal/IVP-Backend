@@ -22,10 +22,10 @@ import {
   AdminAuditService
   } from './admin.service';
 import { PrismaModule } from '../prisma/prisma.module';
-import { EmailService } from '../email/email.service';
-
+import { EmailModule } from '../email/email.module';
 @Module({
   imports: [
+    EmailModule,
     PrismaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -52,7 +52,6 @@ import { EmailService } from '../email/email.service';
     AdminEmployerService,
     AdminNotificationService,
     AdminJobService,
-    EmailService,
     AdminReportsService,
     AdminContentService,
     AdminAuditService

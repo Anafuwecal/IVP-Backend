@@ -3,12 +3,14 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService
 ) {}
 
   // ================= ADMIN RULES =================
@@ -97,6 +99,14 @@ export class SubscriptionsService {
 
     // (NEW PURCHASE): Create fresh record with calculated expiry
     endDate.setMonth(endDate.getMonth() + plan.durationMonths);
+
+    this.notificationsService.createNotification({
+      userId: employer.userId,
+      type: 'SUBSCRIPTION', // Or 'SYSTEM'
+      title: 'Subscription Activated',
+      description: `You have successfully subscribed to the ${plan.name} plan. 
+                    Your subscription is active until ${endDate.toDateString()}.`,
+    }).catch(err => console.error('Notification failed:', err));
     
     return this.prisma.employerSubscription.create({
       data: {
@@ -140,6 +150,15 @@ export class SubscriptionsService {
           sub.plan.name,
           sub.endDate
         ).catch(console.error);
+
+        // NEW: Send in-app notification for expiring subscription
+        this.notificationsService.createNotification({
+          userId: sub.employer.userId,
+          type: 'SUBSCRIPTION',
+          title: 'Subscription Expiring Soon',
+          description: `Your ${sub.plan.name} subscription will expire on ${sub.endDate.toDateString()}. 
+                        Please renew to avoid service interruption.`
+        }).catch(err => console.error('Notification failed:', err));
       }
     }
 

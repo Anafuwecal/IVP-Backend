@@ -14,6 +14,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { TalentProfileModule } from './modules/talent/talent-profile.module';
 import { AdminModule } from './modules/Admin/admin.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -38,6 +39,7 @@ import * as Joi from 'joi';
     HealthModule,
     SystemModule,
     PrismaModule,
+    NotificationsModule,
     SubscriptionsModule,
     MessagingModule,
     TalentProfileModule,

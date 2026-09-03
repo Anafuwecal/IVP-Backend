@@ -9,6 +9,6 @@ import { FileUploadService } from '../upload/file-upload.service';
   imports: [PrismaModule, AuthModule],
   controllers: [EmployerController],
   providers: [EmployerService, FileUploadService],
-  exports: [EmployerService], // Export in case other modules need it later
+  exports: [EmployerService], 
 })
 export class EmployerModule {}

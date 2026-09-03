@@ -14,12 +14,14 @@ import { EmailService } from '../email/email.service';
 import { ScheduleInterviewDto } from './dto/schedule-interview.dto';
 import { FillJobDto } from './dto/fill-job.dto';
 import { SearchJobsDto } from './dto/search-jobs.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class JobsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async publishJob(employerId: string, jobData: CreateJobDto) {
@@ -177,6 +179,14 @@ export class JobsService {
       .sendApplicationStatusEmail(talentEmail, talentName, jobTitle, companyName, status)
       .catch((err) => console.error('Failed to send status notification email:', err));
 
+    // NEW: Send in-app notification for status update
+    this.notificationsService.createNotification({
+      userId: application.talentProfile.userId,
+      type: 'APPLICATION',
+      title: 'Application Status Updated',
+      description: `Your application for ${jobTitle} at ${companyName} is now marked as ${status}.`
+    }).catch(err => console.error('Notification failed:', err));
+
     return {
       message: `Candidate status updated to ${status} successfully`,
       application: updatedApplication,
@@ -223,6 +233,13 @@ export class JobsService {
       'SCHEDULED',
       dto
     ).catch(console.error);
+
+    this.notificationsService.createNotification({
+      userId: application.talentProfile.userId,
+      type: 'INTERVIEW',
+      title: 'Interview Scheduled',
+      description: `You have been scheduled for an interview for the ${application.job.title} role. At ${dto.scheduledAt} at ${dto.location}.`,
+    }).catch(err => console.error('Notification failed:', err));
 
     return { message: 'Interview scheduled successfully', interview };
   }
@@ -335,6 +352,14 @@ export class JobsService {
         job.employer.companyName,
         'ACCEPTED'
       ).catch(console.error);
+
+      // NEW: Notify the hired candidate
+      this.notificationsService.createNotification({
+        userId: hiredApp.talentProfile.userId,
+        type: 'APPLICATION',
+        title: 'Application Accepted',
+        description: `Congratulations! Your application for ${job.title} at ${job.employer.companyName} has been ACCEPTED.`
+      }).catch(err => console.error('Notification failed:', err));
     }
 
     const unsuccessfulApps = job.applications.filter(app => app.id !== dto.applicationId);
@@ -355,6 +380,14 @@ export class JobsService {
           job.employer.companyName,
           job.title
         ).catch(console.error);
+
+        // NEW: Notify the unsuccessful candidates
+        this.notificationsService.createNotification({
+          userId: app.talentProfile.userId,
+          type: 'APPLICATION',
+          title: 'Application Update',
+          description: `The position for ${job.title} at ${job.employer.companyName} has been filled by another candidate.`
+        }).catch(err => console.error('Notification failed:', err));
       });
     }
 

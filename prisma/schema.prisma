@@ -61,6 +61,15 @@ enum InterviewStatus {
   COMPLETED
 }
 
+enum NotificationType {
+  APPLICATION
+  INTERVIEW
+  MESSAGE
+  SUBSCRIPTION
+  SYSTEM
+  PAYMENT 
+}
+
 // --- CORE MODELS ---
 model User {
   id                   String    @id @default(uuid())
@@ -86,6 +95,7 @@ model User {
   talentProfile   TalentProfile?
   employerProfile EmployerProfile?
   auditLogs       AuditLog[]
+  notifications      Notification[]
 }
 
 model TalentProfile {
@@ -370,4 +380,17 @@ model BroadcastNotification {
   admin   User   @relation(fields: [adminId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           // The user receiving the notification
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  description String
+  isRead      Boolean          @default(false)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-//import { EmailService } from '../email/email.service';
+import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -11,7 +12,8 @@ export class PaymentsService {
 
   constructor(
     private prisma: PrismaService,
-    //  private emailService: EmailService
+    private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   // 1. INITIALIZE PAYMENT (Rules 1, 3)
@@ -133,6 +135,13 @@ export class PaymentsService {
       throw new BadRequestException(`Payment initialization failed: ${paystackData.message}`);
     }
 
+    this.notificationsService.createNotification({
+      userId: employer.userId,
+      type: 'PAYMENT',
+      title: 'Payment Initiated',
+      description: `You have initiated a payment for the ${plan.name} plan. Please complete the payment to activate your subscription.`,
+    }).catch(err => console.error('Notification failed:', err));
+
     return {
       message: 'Payment initialized successfully',
       paymentUrl: paystackData.data.authorization_url,
@@ -190,6 +199,16 @@ export class PaymentsService {
       });
 
       this.logger.log(`Subscription activated for employer ${employerId}`);
+      // NEW: Notify employer of successful payment via webhook
+      const employerProfile = await this.prisma.employerProfile.findUnique({ where: { id: employerId } });
+      if (employerProfile) {
+        this.notificationsService.createNotification({
+          userId: employerProfile.userId,
+          type: 'PAYMENT',
+          title: 'Payment Successful',
+          description: `Your payment of ${data.amount / 100} was successful. Your ${plan.name} subscription is now active.`,
+        }).catch(err => console.error('Notification failed:', err));
+      }
     }
   }
 
