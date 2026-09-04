@@ -86,7 +86,7 @@ export class PaymentsService {
 
       // 3. Return a local URL so the frontend refreshes seamlessly
       // Fallback to localhost if FRONTEND_URL isn't set in your .env
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://ivp-africa.vercel.app';
       return {
         message: 'Free plan activated successfully',
         paymentUrl: `${frontendUrl}/employer/subscription?success=true`,
@@ -185,8 +185,13 @@ export class PaymentsService {
 
       const startDate = new Date();
       const endDate = new Date();
-      // Fix: Use setMonth instead of setDate, using durationMonths from your schema
       endDate.setMonth(startDate.getMonth() + plan.durationMonths);
+
+      // 1. Expire any existing active subscriptions for this employer first
+      await this.prisma.employerSubscription.updateMany({
+        where: { employerId, status: 'ACTIVE' },
+        data: { status: 'EXPIRED' },
+      });
 
       await this.prisma.employerSubscription.create({
         data: {

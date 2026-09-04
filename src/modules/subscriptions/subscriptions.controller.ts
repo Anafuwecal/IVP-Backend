@@ -102,4 +102,12 @@ export class SubscriptionsController {
   getMyUsage(@GetUser('id') userId: string) {
     return this.subscriptionsService.getEmployerUsage(userId);
   }
+
+  @Get('current')
+  @Roles(Role.EMPLOYER)
+  @ApiOperation({ summary: 'Get current active subscription details' })
+  @ApiOkResponse({ description: 'Current subscription retrieved successfully.' })
+  getCurrentSubscription(@GetUser('id') userId: string) {
+    return this.subscriptionsService.getCurrentSubscription(userId);
+  }
 }

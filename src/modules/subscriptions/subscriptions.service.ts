@@ -234,4 +234,28 @@ export class SubscriptionsService {
       }
     };
   }
+
+  async getCurrentSubscription(userId: string) {
+  const employer = await this.prisma.employerProfile.findUnique({ 
+    where: { userId } 
+  });
+  
+  if (!employer) throw new NotFoundException('Employer profile not found');
+
+  const activeSub = await this.prisma.employerSubscription.findFirst({
+    where: {
+      employerId: employer.id,
+      status: 'ACTIVE',
+      endDate: { gt: new Date() },
+    },
+    include: { plan: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!activeSub) {
+    throw new NotFoundException('No active subscription found');
+  }
+
+  return activeSub;
+}
 }
