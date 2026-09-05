@@ -29,7 +29,7 @@ export class RegisterTalentDto {
     description: 'Password must be minimum 8 characters, and contain uppercase, lowercase, number, and special character' 
   })
   @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{8,}$/,
     {
       message:
         'Password must be minimum 8 characters, and contain uppercase, lowercase, number, and special character',
@@ -77,7 +77,7 @@ export class ResetPasswordDto {
     description: 'New secure password' 
   })
   @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{8,}$/,
     {
       message:
         'Password must be minimum 8 characters, and contain uppercase, lowercase, number, and special character',
@@ -103,7 +103,7 @@ export class RegisterEmployerDto {
 
   @ApiProperty({ example: 'StrongP@ssw0rd1!', description: 'Secure password' })
   @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{8,}$/,
     {
       message:
         'Password must be minimum 8 characters, and contain uppercase, lowercase, number, and special character',
