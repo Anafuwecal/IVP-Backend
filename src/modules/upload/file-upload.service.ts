@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Express } from 'express';
 import { extname } from 'path';
+import 'multer';
 
 @Injectable()
 export class FileUploadService {
