@@ -218,7 +218,7 @@ export class EmailService {
 
   async sendAdminLoginEmail(email: string, token: string) {
     // This points to your frontend admin verification page
-    const loginUrl = `${process.env.FRONTEND_URL}/admin/verify?token=${token}`;
+    const loginUrl = `${process.env.FRONTEND_URL}/adminLogin/verify?token=${token}`;
 
     try {
       await this.resend.emails.send({
